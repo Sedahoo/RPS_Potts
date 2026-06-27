@@ -4,8 +4,7 @@ __pycache__/
 *.pyc
 
 # compiled C++ binaries
-phase3_cpp/mc_simulation
-phase7_zealots/mc_zealots
+drivers/mc_engine
 
 # scratch / temp simulation inputs
 *.edgelist
