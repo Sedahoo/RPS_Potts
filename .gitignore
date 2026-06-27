@@ -1,0 +1,14 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# compiled C++ binaries
+phase3_cpp/mc_simulation
+phase7_zealots/mc_zealots
+
+# scratch / temp simulation inputs
+*.edgelist
+_*.edgelist
+jobs_*.txt
+temp_*/

@@ -1,0 +1,127 @@
+// Phase 7: Monte Carlo with ZEALOTS (stubborn nodes).
+//
+// New research question: can a small fraction of nodes that are permanently
+// locked to one strategy take over the whole network -- even in the cycling
+// phase, where normally no strategy wins?
+//
+// This is the Phase-3 engine plus two ideas:
+//   * a randomly chosen fraction of nodes are "zealots" fixed to strategy `zs`;
+//     they are skipped in the update loop but still influence their neighbours.
+//   * we additionally report the CONVERSION RATE: of the FREE (non-zealot)
+//     nodes, what fraction end up playing the zealots' strategy zs. That
+//     separates genuine influence from the trivial contribution of the zealots
+//     themselves.
+//
+// Output line:  "m_psi avg_r avg_p avg_s conversion_zs"
+//
+// Build:  make   (reuses ../phase3_cpp/xoshiro.h via -I)
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <cmath>
+#include <map>
+#include <numeric>
+#include <algorithm>
+#include "xoshiro.h"
+
+struct Graph { int n = 0; std::vector<std::vector<int>> adj; };
+
+Graph read_graph(const std::string& path) {
+    std::ifstream f(path);
+    Graph g;
+    if (!f.is_open()) return g;
+    std::map<int,int> id; int next = 0;
+    auto idx = [&](int v){ auto it=id.find(v); if(it!=id.end()) return it->second;
+                           id[v]=next; return next++; };
+    int u, v;
+    while (f >> u >> v) {
+        int a = idx(u), b = idx(v);
+        if ((int)g.adj.size() <= std::max(a,b)) g.adj.resize(std::max(a,b)+1);
+        g.adj[a].push_back(b); g.adj[b].push_back(a);
+    }
+    g.n = next;
+    return g;
+}
+
+int main(int argc, char* argv[]) {
+    std::string graph_path, output_path;
+    double epsilon = 0.5, temp = 0.65, zealot_frac = 0.0;
+    int sweeps = 1500, burn_in = 450, zealot_strategy = 0;
+    unsigned long seed = 1;
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        if      (a=="--graph"   && i+1<argc) graph_path  = argv[++i];
+        else if (a=="--epsilon" && i+1<argc) epsilon     = std::stod(argv[++i]);
+        else if (a=="--temp"    && i+1<argc) temp        = std::stod(argv[++i]);
+        else if (a=="--sweeps"  && i+1<argc) sweeps      = std::stoi(argv[++i]);
+        else if (a=="--burn-in" && i+1<argc) burn_in     = std::stoi(argv[++i]);
+        else if (a=="--seed"    && i+1<argc) seed        = std::stoul(argv[++i]);
+        else if (a=="--zealot-frac"     && i+1<argc) zealot_frac     = std::stod(argv[++i]);
+        else if (a=="--zealot-strategy" && i+1<argc) zealot_strategy = std::stoi(argv[++i]);
+        else if (a=="--output"  && i+1<argc) output_path = argv[++i];
+    }
+    if (graph_path.empty()) { std::cerr << "need --graph\n"; return 1; }
+    Graph g = read_graph(graph_path);
+    if (g.n == 0) { std::cerr << "empty graph\n"; return 1; }
+
+    xso::xoshiro_8x64_star_star rng(seed);
+    const double P[3][3] = {{1.0,-epsilon,epsilon},{epsilon,1.0,-epsilon},{-epsilon,epsilon,1.0}};
+
+    std::vector<int> state(g.n);
+    for (int i = 0; i < g.n; ++i) state[i] = rng.sample(0, 2);
+
+    // pick the zealots: a random subset, all locked to `zealot_strategy`
+    std::vector<char> is_zealot(g.n, 0);
+    int n_zealot = (int)std::lround(zealot_frac * g.n);
+    std::vector<int> order(g.n);
+    std::iota(order.begin(), order.end(), 0);
+    for (int i = 0; i < n_zealot; ++i) {                 // partial Fisher-Yates
+        int j = rng.sample(i, g.n - 1);
+        std::swap(order[i], order[j]);
+        is_zealot[order[i]] = 1;
+        state[order[i]] = zealot_strategy;
+    }
+    int n_free = g.n - n_zealot;
+
+    const double sin120 = std::sqrt(3.0) / 2.0;
+    double sr=0,sp=0,ss=0,spr=0,spi=0,conv=0;
+    long meas = 0;
+
+    for (int t = 0; t < sweeps; ++t) {
+        for (int i = 0; i < g.n; ++i) {
+            int n = rng.sample(0, g.n - 1);
+            if (is_zealot[n]) continue;                  // zealots never update
+            int cur = state[n];
+            int prop = (cur + rng.sample(1, 2)) % 3;
+            const auto& nb = g.adj[n];
+            if (nb.empty()) continue;
+            double dU = 0.0;
+            for (int m : nb) dU += P[prop][state[m]] - P[cur][state[m]];
+            if (rng.sample(0.0, 1.0) * (1.0 + std::exp(-dU/temp)) < 1.0)
+                state[n] = prop;
+        }
+        if (t >= burn_in) {
+            int c[3] = {0,0,0}; long free_zs = 0;
+            for (int i = 0; i < g.n; ++i) {
+                c[state[i]]++;
+                if (!is_zealot[i] && state[i] == zealot_strategy) free_zs++;
+            }
+            double r=(double)c[0]/g.n, p=(double)c[1]/g.n, s=(double)c[2]/g.n;
+            sr+=r; sp+=p; ss+=s;
+            spr += r - 0.5*(p+s);
+            spi += sin120*(p - s);
+            conv += (n_free > 0) ? (double)free_zs / n_free : 0.0;
+            meas++;
+        }
+    }
+    double m_psi = std::sqrt(std::pow(spr/meas,2) + std::pow(spi/meas,2));
+    std::ostringstream line;
+    line << m_psi << " " << sr/meas << " " << sp/meas << " " << ss/meas
+         << " " << conv/meas << "\n";
+    if (output_path.empty()) std::cout << line.str();
+    else { std::ofstream o(output_path); o << line.str(); }
+    return 0;
+}
