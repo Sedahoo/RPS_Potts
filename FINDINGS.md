@@ -1,56 +1,65 @@
-# Findings — iteration experiments (phases 7–8)
+# Findings
 
-New results obtained by extending the recreated engine, beyond what the original
-thesis reported. Model recap: nodes play Rock/Paper/Scissors, payoff
-`P = I + eps*skew`; `eps` is cyclic-dominance strength; `m_psi` ~1 ordered, ~0
-cycling. Cycle: Paper beats Rock, Scissors beats Paper, Rock beats Scissors.
+Results from the whole project, in two parts: **A. Recreation** (reproducing the
+thesis's Project B) and **B. Iteration** (novel extensions). Each section folder
+has its own `FINDINGS.md` with the detailed version; this file is the summary.
 
-## 1. Zealots provoke their own predator  (`phase7_zealots/experiment.py`)
+**Model recap.** Nodes play Rock/Paper/Scissors; payoff `P = I + eps*skew`. `eps`
+is cyclic-dominance strength; `m_psi` ~1 ordered (consensus), ~0 cycling. Cycle:
+Paper beats Rock, Scissors beats Paper, Rock beats Scissors. Central question:
+does higher connectivity `<k>` protect order against `eps`?
 
-A fraction `z` of nodes locked to **Rock**, on an ER graph, averaged over seeds.
+---
 
-- **Ordering phase (eps=0.3):** a few Rock-zealots do **not** make the network
-  adopt Rock — the free network flips to **Paper** (the strategy that beats
-  Rock). Conversion-to-Rock is non-monotonic: it drops to ~0 for z in
-  [0.05, 0.16], then partially recovers; `m_psi` shows a **frustration minimum**
-  near z ~ 0.16 before recovering.
-- **Cycling phase (eps=0.9):** zealots induce only weak order (`m_psi` ~ linear
-  in z, ~0.17 at z=0.2) and cannot pin their own strategy.
+## A. Recreation findings (reproducing the thesis)
 
-Takeaway: in a cyclic game the naive "stubborn minority drags everyone along"
-fails — zealots summon their predator.
+### Mean field — `mean_field/FINDINGS.md`
+- One control knob: eps=0.2 orders (`m_psi=1.000`), eps=0.9 cycles (`m_psi=0.001`).
+- **Connectivity stabilises order**: the transition slides to higher eps as `<k>`
+  grows (k=2 ~0.08, k=10 ~0.64, k=200 ~0.70), via the effective temperature `T/k`;
+  it saturates at high k.
+- Both mean fields **overestimate the ordered phase** (MC breaks ~0.50, mean field
+  ~0.62). **DMF beats HMF**, by more on heterogeneous BA
+  (RMSE 0.3357/0.3280 BA vs 0.3376/0.3340 ER).
 
-## 2. Hubs amplify zealots ~8x — but only the *whether*  (`experiment_hubs.py`)
+### Monte Carlo — `monte_carlo/FINDINGS.md`
+- MC matches HMF in the bulk but **diverges at the transition** (MC eps_c ~ 0.53
+  vs HMF ~ 0.62) — finite-size fluctuations destroy order early.
+- **Finite-N signature**: cycling shows noisy coexistence (small instantaneous
+  |psi|), unlike the mean field's coherent oscillation — same `m_psi~0`, different
+  mechanism.
+- C++ engine validated against pure Python, **~30-40x faster** (enables the sweeps).
 
-Same Rock-zealots placed on BA **hubs** vs random nodes (avg of 15 graphs).
+### Phase diagram — `phase_diagram/FINDINGS.md`
+- The `(<k>, eps)` heatmap: ordered region in the upper-left, boundary **curving
+  up-right** (connectivity protects order), saturating near eps ~ 0.65; sparse
+  rows (`<k>`<=4) cannot order at all.
+- **ER vs BA nearly identical** — for the MC, average degree matters, not the
+  degree-distribution shape.
 
-- **Cycling phase:** hub placement drives `m_psi` up to ~0.72 (linear in z) vs
-  ~0.08 for random — roughly **8x amplification**. But the order is still
-  **Paper** (free-node Rock-conversion -> 0). Hubs control *whether* the network
-  orders, not *what* it orders on.
-- **Ordering phase:** a crossover — hub-zealots provoke Paper at small z, but
-  **pin Rock** (conversion -> 1) once z > 0.08, because the top-degree nodes
-  directly dominate their neighbourhoods.
+### Dynamics — `dynamics/FINDINGS.md`
+- **Ternary**: low eps spirals to a corner (consensus); high eps orbits the centre.
+- **FSS**: the transition is rounded/late on small N and sharpens + converges to
+  eps_c ~ 0.50 as N grows (textbook finite-size scaling).
+- **Stability**: the mixed fixed point loses stability across the transition — to
+  consensus at low eps, to a limit cycle at high eps (Hopf-like).
 
-## 3. Competing factions: the predator wins  (`experiment_mixed.py`)
+---
 
-Equal fractions `z` of **Rock** and **Paper** zealots (total 2z), ER graph.
+## B. Iteration findings (novel — not in the thesis)
 
-- **Ordering phase:** at high z the network goes to **Paper**, not Scissors.
-  Paper is reinforced twice — by its own zealots and by Rock-zealots provoking
-  their predator (Paper). Intermediate z is a frustrated, multistable regime.
-- **Cycling phase:** the cycle is robust; balanced zealots barely perturb it
-  (slight Paper tilt, `m_psi` ~ 0.08).
+### Zealots — `zealots/FINDINGS.md`
+1. **Zealots provoke their own predator**: a few Rock-zealots flip the free
+   ordering-phase network to **Paper**, not Rock; conversion is non-monotonic with
+   a frustration minimum near z~0.16.
+2. **Hubs amplify zealots ~8x** (cycling-phase `m_psi` 0.72 vs 0.08 random) — but
+   the order is still Paper. Hubs control *whether*, not *what*. Ordering-phase
+   crossover: provoke Paper at small z, pin Rock once z>0.08.
+3. **Competing Rock+Paper factions** -> the **predator wins** (Paper) at high z;
+   intermediate z is frustrated/multistable; the cycling phase is robust.
 
-## 4. Defects erode order via effective <k>  (`phase8_defects/experiment_defects.py`)
-
-Quench a fraction `f` of edges or nodes from a dense ER graph (<k>=20), then
-sweep eps.
-
-- The transition slides to **lower eps** as `f` grows (f=0 -> eps_c~0.63;
-  f=0.8 -> eps_c~0.22): a damaged network sustains order against weaker cyclic
-  pressure.
-- **Edge and node defects give nearly identical curves when matched by the
-  resulting <k>** -> order-stability depends on effective average degree, not on
-  the damage mechanism. Defects are "connectivity stabilises order" run in
-  reverse.
+### Defects — `defects/FINDINGS.md`
+4. **Defects erode order via effective `<k>`**: edge or node quenching slides the
+   transition to lower eps (f=0 -> eps_c~0.63, f=0.8 -> ~0.22), and **edge and node
+   defects coincide when matched by the resulting `<k>`** — "connectivity
+   stabilises order" run in reverse.

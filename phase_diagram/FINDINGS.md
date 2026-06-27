@@ -1,0 +1,25 @@
+# Findings — phase_diagram/
+
+The headline figure: a heatmap of `m_psi` over (average degree `<k>`, cyclic
+strength `eps`), from the full stochastic MC. Reproduces the thesis's
+"Connectivity vs Stability" result.
+
+## The phase boundary (`run.sh` -> `plot_phase_diagram.py`)
+
+- Red (ordered, `m_psi`~1) fills the upper-left; blue (cycling, `m_psi`~0) the
+  lower-right. The boundary **curves up and to the right**: as `<k>` grows, order
+  survives to higher `eps`. Connectivity protects order — now from the real
+  simulator, not the mean-field toy.
+- The boundary **saturates near eps ~ 0.65** at high `<k>` (consistent with the
+  HMF `T/k` saturation in `mean_field/`).
+- The bottom rows (`<k>` = 2-4, where the graph is barely connected) **cannot
+  sustain order even at small eps** — a finite-size / percolation effect the mean
+  field misses.
+
+## ER vs BA
+
+- The ER and BA phase diagrams are **nearly identical**. For the MC dynamics what
+  matters is the *average* degree, not whether the distribution is homogeneous
+  (ER) or hub-dominated (BA). (The degree distribution's effect shows up instead
+  in how well DMF vs HMF approximate the MC — see `mean_field/`.) BA's boundary
+  is slightly fuzzier due to degree heterogeneity.

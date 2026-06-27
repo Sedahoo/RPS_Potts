@@ -47,7 +47,8 @@ the order they were built (the learning path), if you want the guided tour.
 | `zealots/`      | stubborn-node experiments (random / hub / mixed factions) | zealots provoke their own predator |
 | `defects/`      | edge/node quenching (quenched disorder) | defects erode order via effective <k> |
 
-See `FINDINGS.md` for the results of the iteration experiments (`zealots/`, `defects/`).
+Each section folder has its own `FINDINGS.md` with detailed results; the
+top-level `FINDINGS.md` summarises everything (recreation + iteration).
 
 Run examples:
 ```bash
