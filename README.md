@@ -26,13 +26,24 @@ C++ needs g++ with C++20 (`make -C phase3_cpp`).
 
 ## Phases
 
+**Shared code (after refactor):**
+
+| Dir | What it holds |
+|-----|---------------|
+| `drivers/`  | the single C++ engine `mc_engine` (plain MC + optional zealots) + Makefile + xoshiro.h |
+| `common/`   | shared Python: `graphs` (build/write/degree-dist), `observables` (m_psi), `meanfield` (HMF+DMF), `mc_python` (reference MC), `runner` (call the engine) |
+
+**Phases (each imports from `common/`, calls `drivers/mc_engine`):**
+
 | Dir | What it builds | Key output |
 |-----|----------------|------------|
 | `phase1_hmf/`     | Homogeneous mean field (3 ODEs, no network) | transition curve; order vs cycling |
 | `phase2_mc/`      | Agent-level Monte Carlo on ER/BA; MC-vs-HMF validation | finite-size physics the mean field misses |
-| `phase3_cpp/`     | The MC ported to C++ (xoshiro, ~40x faster) | the engine the sweeps use |
+| `phase3_cpp/`     | Validates the C++ engine vs pure Python (~40x faster) | trust + speed |
 | `phase4_pipeline/`| Parallel `(k, eps)` sweep -> phase diagram heatmap | the headline "connectivity stabilises order" figure |
 | `phase5_meanfield/`| Degree-based mean field + MC/HMF/DMF comparison | DMF beats HMF, more so on BA |
+| `phase6_figures/` | ternary simplex, finite-size scaling, fixed-point stability | the standard figure set |
+| `phase7_zealots/` | stubborn-node experiments (random + hub placement) | zealots provoke their own predator |
 
 Run examples:
 ```bash

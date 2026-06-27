@@ -1,51 +1,31 @@
 """
 Phase 7b: do zealots on BA HUBS punch above their weight?
 
-BA graphs have a few very-high-degree hubs; ER graphs don't. We place the same
-fraction z of Rock-zealots either on RANDOM nodes or on the HIGHEST-DEGREE nodes
-of a BA graph, and compare their effect in both phases.
-
-Hypothesis: a hub touches a huge number of free nodes, so hub-zealots should
-exert outsized influence -- breaking the cyclic symmetry (and triggering the
-"flip to Paper" effect from phase 7) at a much smaller z than random placement.
-
-We track, vs z (averaged over a few BA graphs):
-  * m_psi      -- global order (did the cycle break?)
-  * conversion -- fraction of FREE nodes playing Rock (the zealots' strategy)
+Same fraction z of Rock-zealots placed on RANDOM nodes vs the HIGHEST-DEGREE
+nodes of a BA graph. Hubs touch many free nodes, so they should break the cyclic
+symmetry at much smaller z. Finding: in the cycling phase hub placement amplifies
+the effect ~8x (m_psi), but the induced order is still Paper (the predator), not
+the zealots' Rock.
 """
 
-import os, sys, subprocess
+import os, sys
 import numpy as np
-import networkx as nx
 import matplotlib.pyplot as plt
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-BIN = os.path.join(HERE, "mc_zealots")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from common.graphs import build_graph, write_edgelist
+from common import runner
 
-
-def make_ba(n, k, seed):
-    G = nx.barabasi_albert_graph(n, max(1, k // 2), seed=seed)
-    G = nx.convert_node_labels_to_integers(G)
-    path = os.path.join(HERE, f"_hub_{seed}.edgelist")
-    nx.write_edgelist(G, path, data=False)
-    return path
-
-
-def run(edgelist, eps, z, target, seed, T=0.65, sweeps=1500):
-    out = subprocess.run(
-        [BIN, "--graph", edgelist, "--epsilon", str(eps), "--temp", str(T),
-         "--sweeps", str(sweeps), "--burn-in", str(int(sweeps*0.3)),
-         "--zealot-frac", str(z), "--zealot-strategy", "0",
-         "--zealot-target", target, "--seed", str(seed)],
-        capture_output=True, text=True).stdout.split()
-    return float(out[0]), float(out[4])   # m_psi, conversion
+N, K = 800, 10
 
 
 def main():
-    N, k = 800, 10
-    z_vals = np.linspace(0.0, 0.10, 16)
+    runner.ensure_engine()
     seeds = [1, 2, 3]
-    edgelists = [make_ba(N, k, s) for s in seeds]
+    edgelists = [write_edgelist(build_graph("BA", N, K, seed=s),
+                                os.path.join(os.path.dirname(__file__), f"_hub_{s}.edgelist"))
+                 for s in seeds]
+    z_vals = np.linspace(0.0, 0.10, 16)
     regimes = [("Ordering phase (eps=0.3)", 0.3), ("Cycling phase (eps=0.9)", 0.9)]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -53,9 +33,11 @@ def main():
         for target, col in [("random", "tab:blue"), ("hub", "tab:orange")]:
             mp = np.zeros(len(z_vals)); cv = np.zeros(len(z_vals))
             for i, z in enumerate(z_vals):
-                res = [run(el, eps, z, target, s) for el, s in zip(edgelists, seeds)]
-                mp[i] = np.mean([r[0] for r in res])
-                cv[i] = np.mean([r[1] for r in res])
+                res = [runner.run_engine(el, eps, zealot_frac=z, zealot_strategy=0,
+                                         zealot_target=target, seed=s)
+                       for el, s in zip(edgelists, seeds)]
+                mp[i] = np.mean([r["m_psi"] for r in res])
+                cv[i] = np.mean([r["conversion"] for r in res])
             ax.plot(z_vals, mp, "s-", color=col, label=f"{target}: $m_\\psi$")
             ax.plot(z_vals, cv, "o--", color=col, alpha=0.6, label=f"{target}: conversion")
         ax.axhline(1/3, color="gray", ls=":", lw=1)

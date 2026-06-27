@@ -1,20 +1,18 @@
-// Phase 7: Monte Carlo with ZEALOTS (stubborn nodes).
+// Unified Monte Carlo engine for the Potts-RPS-on-networks model.
 //
-// New research question: can a small fraction of nodes that are permanently
-// locked to one strategy take over the whole network -- even in the cycling
-// phase, where normally no strategy wins?
+// This is THE simulation driver for the whole project (the original repo's
+// "DRIVERS/" idea): a single binary the experiment scripts call. With the
+// default --zealot-frac 0 it is the plain agent-level MC (phases 2-6); with
+// zealots enabled it runs the stubborn-node experiments (phase 7).
 //
-// This is the Phase-3 engine plus two ideas:
-//   * a randomly chosen fraction of nodes are "zealots" fixed to strategy `zs`;
-//     they are skipped in the update loop but still influence their neighbours.
-//   * we additionally report the CONVERSION RATE: of the FREE (non-zealot)
-//     nodes, what fraction end up playing the zealots' strategy zs. That
-//     separates genuine influence from the trivial contribution of the zealots
-//     themselves.
+// Zealots: a fraction of nodes are permanently locked to strategy `zs`. They
+// are skipped in the update loop but still influence their neighbours. Placement
+// is random or on the highest-degree nodes (--zealot-target hub). We also report
+// the CONVERSION RATE: of the FREE (non-zealot) nodes, what fraction play zs --
+// separating genuine influence from the zealots' own trivial contribution.
 //
 // Output line:  "m_psi avg_r avg_p avg_s conversion_zs"
-//
-// Build:  make   (reuses ../phase3_cpp/xoshiro.h via -I)
+// Build:  make
 
 #include <iostream>
 #include <fstream>

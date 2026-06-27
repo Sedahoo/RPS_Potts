@@ -18,7 +18,7 @@ DEG_MIN=2;  DEG_MAX=40;  DEG_STEP=2
 NUM_JOBS="$(nproc)"
 
 PYTHON="$(cd ../.venv/bin && pwd)/python"   # project venv (has networkx); abs dir, keeps the venv symlink intact
-BIN="../phase3_cpp/mc_simulation"
+BIN="../drivers/mc_engine"
 GRAPHS_DIR="temp_graphs_${GRAPH_TYPE}"
 RESULTS_DIR="temp_results_${GRAPH_TYPE}"
 JOBS_FILE="jobs_${GRAPH_TYPE}.txt"
@@ -27,7 +27,7 @@ FINAL_PLOT="phase_diagram_${GRAPH_TYPE}.png"
 echo "===== Phase 4 pipeline: ${GRAPH_TYPE}, N=${N_NODES}, ${NUM_JOBS} jobs ====="
 
 # --- Step 0: make sure the engine is built ---
-make -C ../phase3_cpp >/dev/null
+make -s -C ../drivers
 
 # --- Step 1: generate one graph per degree ---
 echo "--- generating graphs (k=${DEG_MIN}..${DEG_MAX} step ${DEG_STEP}) ---"

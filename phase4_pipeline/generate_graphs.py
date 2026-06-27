@@ -1,27 +1,12 @@
 """
-Phase 4, step 1: build one network per target average degree and save it as an
-edgelist the C++ engine can read.
-
-Same logic as the original repo's generate_graphs.py: ER uses p = <k>/(N-1);
-BA adds m = <k>/2 edges per node. We keep only the giant connected component
-so no agent is left with zero neighbours.
+Phase 4, step 1: build one network per target average degree, save as edgelist.
+Thin CLI wrapper around common.graphs.build_graph (called by run.sh).
 """
 
-import argparse, os
-import networkx as nx
+import os, sys, argparse
 
-
-def make_graph(n, avg_degree, graph_type, seed):
-    if graph_type == "ER":
-        G = nx.erdos_renyi_graph(n, avg_degree / (n - 1), seed=seed)
-    elif graph_type == "BA":
-        G = nx.barabasi_albert_graph(n, max(1, avg_degree // 2), seed=seed)
-    else:
-        raise ValueError("graph_type must be ER or BA")
-    if not nx.is_connected(G):
-        G = G.subgraph(max(nx.connected_components(G), key=len)).copy()
-    return nx.convert_node_labels_to_integers(G)
-
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from common.graphs import build_graph, write_edgelist
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
@@ -32,7 +17,7 @@ if __name__ == "__main__":
     ap.add_argument("--seed", type=int, default=1)
     a = ap.parse_args()
     os.makedirs(a.output_dir, exist_ok=True)
-    G = make_graph(a.n, a.avg_degree, a.type, a.seed)
+    G = build_graph(a.type, a.n, a.avg_degree, seed=a.seed)
     path = os.path.join(a.output_dir, f"graph_N{a.n}_k{a.avg_degree}.edgelist")
-    nx.write_edgelist(G, path, data=False)
+    write_edgelist(G, path)
     print(f"  k={a.avg_degree}: N={G.number_of_nodes()}, edges={G.number_of_edges()}")
