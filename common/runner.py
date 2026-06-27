@@ -6,6 +6,7 @@ scripts don't each re-implement the subprocess plumbing.
 
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DRIVERS = os.path.join(ROOT, "drivers")
@@ -32,3 +33,13 @@ def run_engine(edgelist, eps, temp=0.65, sweeps=1500, burn_in=None, seed=1,
         capture_output=True, text=True, check=True).stdout.split()
     return {"m_psi": float(out[0]), "r": float(out[1]), "p": float(out[2]),
             "s": float(out[3]), "conversion": float(out[4])}
+
+
+def run_many(jobs, workers=None):
+    """Run many simulations in parallel threads (each is a subprocess, so the GIL
+    is not a bottleneck). `jobs` is a list of kwarg dicts for run_engine; returns
+    the result dicts in the same order."""
+    if workers is None:
+        workers = os.cpu_count() or 4
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        return list(ex.map(lambda kw: run_engine(**kw), jobs))

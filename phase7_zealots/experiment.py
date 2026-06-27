@@ -19,25 +19,24 @@ from common.graphs import build_graph, write_edgelist
 from common import runner
 
 N, K, ZS = 800, 10, 0      # zealots play Rock (strategy 0)
+SEEDS = list(range(1, 13))  # 12 ER graphs to average over
 
 
 def main():
     runner.ensure_engine()
-    seeds = [1, 2, 3]
     edgelists = [write_edgelist(build_graph("ER", N, K, seed=s),
                                 os.path.join(os.path.dirname(__file__), f"_zg_{s}.edgelist"))
-                 for s in seeds]
+                 for s in SEEDS]
     z_vals = np.linspace(0.0, 0.20, 17)
     regimes = [("Ordering phase (eps=0.3)", 0.3), ("Cycling phase (eps=0.9)", 0.9)]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     for ax, (title, eps) in zip(axes, regimes):
-        conv = np.zeros(len(z_vals)); mpsi = np.zeros(len(z_vals))
-        for i, z in enumerate(z_vals):
-            res = [runner.run_engine(el, eps, zealot_frac=z, zealot_strategy=ZS, seed=s)
-                   for el, s in zip(edgelists, seeds)]
-            conv[i] = np.mean([r["conversion"] for r in res])
-            mpsi[i] = np.mean([r["m_psi"] for r in res])
+        jobs = [dict(edgelist=el, eps=eps, zealot_frac=float(z), zealot_strategy=ZS, seed=s)
+                for z in z_vals for el, s in zip(edgelists, SEEDS)]
+        res = runner.run_many(jobs)
+        conv = np.array([r["conversion"] for r in res]).reshape(len(z_vals), len(SEEDS)).mean(axis=1)
+        mpsi = np.array([r["m_psi"] for r in res]).reshape(len(z_vals), len(SEEDS)).mean(axis=1)
         ax.plot(z_vals, conv, "o-", color="tab:red",
                 label="conversion (free nodes playing Rock)")
         ax.plot(z_vals, mpsi, "s-", color="tab:purple", label=r"$m_\psi$ (global order)")
