@@ -47,7 +47,7 @@ Graph read_graph(const std::string& path) {
 }
 
 int main(int argc, char* argv[]) {
-    std::string graph_path, output_path;
+    std::string graph_path, output_path, zealot_target = "random";
     double epsilon = 0.5, temp = 0.65, zealot_frac = 0.0;
     int sweeps = 1500, burn_in = 450, zealot_strategy = 0;
     unsigned long seed = 1;
@@ -61,6 +61,7 @@ int main(int argc, char* argv[]) {
         else if (a=="--seed"    && i+1<argc) seed        = std::stoul(argv[++i]);
         else if (a=="--zealot-frac"     && i+1<argc) zealot_frac     = std::stod(argv[++i]);
         else if (a=="--zealot-strategy" && i+1<argc) zealot_strategy = std::stoi(argv[++i]);
+        else if (a=="--zealot-target"   && i+1<argc) zealot_target   = argv[++i];  // random | hub
         else if (a=="--output"  && i+1<argc) output_path = argv[++i];
     }
     if (graph_path.empty()) { std::cerr << "need --graph\n"; return 1; }
@@ -73,16 +74,28 @@ int main(int argc, char* argv[]) {
     std::vector<int> state(g.n);
     for (int i = 0; i < g.n; ++i) state[i] = rng.sample(0, 2);
 
-    // pick the zealots: a random subset, all locked to `zealot_strategy`
+    // pick the zealots, all locked to `zealot_strategy`.
+    //   target=random : a uniformly random subset of nodes.
+    //   target=hub    : the highest-degree nodes (tests whether hubs, which BA
+    //                   graphs have and ER graphs don't, amplify zealot power).
     std::vector<char> is_zealot(g.n, 0);
     int n_zealot = (int)std::lround(zealot_frac * g.n);
     std::vector<int> order(g.n);
     std::iota(order.begin(), order.end(), 0);
-    for (int i = 0; i < n_zealot; ++i) {                 // partial Fisher-Yates
-        int j = rng.sample(i, g.n - 1);
-        std::swap(order[i], order[j]);
-        is_zealot[order[i]] = 1;
-        state[order[i]] = zealot_strategy;
+    if (zealot_target == "hub") {
+        std::sort(order.begin(), order.end(),
+                  [&](int x, int y){ return g.adj[x].size() > g.adj[y].size(); });
+        for (int i = 0; i < n_zealot; ++i) {
+            is_zealot[order[i]] = 1;
+            state[order[i]] = zealot_strategy;
+        }
+    } else {
+        for (int i = 0; i < n_zealot; ++i) {             // partial Fisher-Yates
+            int j = rng.sample(i, g.n - 1);
+            std::swap(order[i], order[j]);
+            is_zealot[order[i]] = 1;
+            state[order[i]] = zealot_strategy;
+        }
     }
     int n_free = g.n - n_zealot;
 
