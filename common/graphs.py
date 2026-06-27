@@ -22,6 +22,35 @@ def build_graph(graph_type, n, avg_degree, seed=1):
     return nx.convert_node_labels_to_integers(G)
 
 
+def remove_edges(G, frac, seed=0):
+    """Quench a fraction of edges (disabled connections). Keeps the giant
+    component so the simulation stays well-defined."""
+    import random
+    if frac <= 0:
+        return G.copy()
+    rng = random.Random(seed)
+    H = G.copy()
+    edges = list(H.edges())
+    rng.shuffle(edges)
+    H.remove_edges_from(edges[:int(frac * len(edges))])
+    H = H.subgraph(max(nx.connected_components(H), key=len)).copy()
+    return nx.convert_node_labels_to_integers(H)
+
+
+def remove_nodes(G, frac, seed=0):
+    """Quench a fraction of nodes (vacancies). Keeps the giant component."""
+    import random
+    if frac <= 0:
+        return G.copy()
+    rng = random.Random(seed)
+    H = G.copy()
+    nodes = list(H.nodes())
+    rng.shuffle(nodes)
+    H.remove_nodes_from(nodes[:int(frac * len(nodes))])
+    H = H.subgraph(max(nx.connected_components(H), key=len)).copy()
+    return nx.convert_node_labels_to_integers(H)
+
+
 def write_edgelist(G, path):
     """Write an undirected edgelist the C++ engine can read; return the path."""
     nx.write_edgelist(G, path, data=False)

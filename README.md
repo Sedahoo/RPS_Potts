@@ -43,7 +43,10 @@ C++ needs g++ with C++20 (`make -C phase3_cpp`).
 | `phase4_pipeline/`| Parallel `(k, eps)` sweep -> phase diagram heatmap | the headline "connectivity stabilises order" figure |
 | `phase5_meanfield/`| Degree-based mean field + MC/HMF/DMF comparison | DMF beats HMF, more so on BA |
 | `phase6_figures/` | ternary simplex, finite-size scaling, fixed-point stability | the standard figure set |
-| `phase7_zealots/` | stubborn-node experiments (random + hub placement) | zealots provoke their own predator |
+| `phase7_zealots/` | stubborn-node experiments (random/hub/mixed factions) | zealots provoke their own predator |
+| `phase8_defects/` | edge/node quenching (defects) | defects erode order via effective <k> |
+
+See `FINDINGS.md` for the results of the iteration experiments (phases 7-8).
 
 Run examples:
 ```bash
