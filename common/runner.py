@@ -20,8 +20,12 @@ def ensure_engine():
 
 
 def run_engine(edgelist, eps, temp=0.65, sweeps=1500, burn_in=None, seed=1,
-               zealot_frac=0.0, zealot_strategy=0, zealot_target="random"):
-    """Run one simulation; return dict(m_psi, r, p, s, conversion)."""
+               zealot_frac=0.0, zealot_strategy=0, zealot_target="random",
+               zealot_frac_b=0.0, zealot_strategy_b=1):
+    """Run one simulation; return dict(m_psi, r, p, s, conversion).
+
+    A second (optional) zealot faction is given by zealot_frac_b/zealot_strategy_b.
+    """
     if burn_in is None:
         burn_in = int(sweeps * 0.3)
     out = subprocess.run(
@@ -29,7 +33,9 @@ def run_engine(edgelist, eps, temp=0.65, sweeps=1500, burn_in=None, seed=1,
          "--sweeps", str(sweeps), "--burn-in", str(burn_in), "--seed", str(seed),
          "--zealot-frac", str(zealot_frac),
          "--zealot-strategy", str(zealot_strategy),
-         "--zealot-target", zealot_target],
+         "--zealot-target", zealot_target,
+         "--zealot-frac-b", str(zealot_frac_b),
+         "--zealot-strategy-b", str(zealot_strategy_b)],
         capture_output=True, text=True, check=True).stdout.split()
     return {"m_psi": float(out[0]), "r": float(out[1]), "p": float(out[2]),
             "s": float(out[3]), "conversion": float(out[4])}

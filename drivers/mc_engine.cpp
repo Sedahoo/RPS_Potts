@@ -46,8 +46,8 @@ Graph read_graph(const std::string& path) {
 
 int main(int argc, char* argv[]) {
     std::string graph_path, output_path, zealot_target = "random";
-    double epsilon = 0.5, temp = 0.65, zealot_frac = 0.0;
-    int sweeps = 1500, burn_in = 450, zealot_strategy = 0;
+    double epsilon = 0.5, temp = 0.65, zealot_frac = 0.0, zealot_frac_b = 0.0;
+    int sweeps = 1500, burn_in = 450, zealot_strategy = 0, zealot_strategy_b = 1;
     unsigned long seed = 1;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -60,6 +60,8 @@ int main(int argc, char* argv[]) {
         else if (a=="--zealot-frac"     && i+1<argc) zealot_frac     = std::stod(argv[++i]);
         else if (a=="--zealot-strategy" && i+1<argc) zealot_strategy = std::stoi(argv[++i]);
         else if (a=="--zealot-target"   && i+1<argc) zealot_target   = argv[++i];  // random | hub
+        else if (a=="--zealot-frac-b"     && i+1<argc) zealot_frac_b     = std::stod(argv[++i]);  // 2nd faction
+        else if (a=="--zealot-strategy-b" && i+1<argc) zealot_strategy_b = std::stoi(argv[++i]);
         else if (a=="--output"  && i+1<argc) output_path = argv[++i];
     }
     if (graph_path.empty()) { std::cerr << "need --graph\n"; return 1; }
@@ -95,7 +97,15 @@ int main(int argc, char* argv[]) {
             state[order[i]] = zealot_strategy;
         }
     }
-    int n_free = g.n - n_zealot;
+    // optional second zealot faction, drawn at random from the remaining nodes
+    int n_zealot_b = (int)std::lround(zealot_frac_b * g.n);
+    for (int i = n_zealot; i < n_zealot + n_zealot_b && i < g.n; ++i) {
+        int j = rng.sample(i, g.n - 1);
+        std::swap(order[i], order[j]);
+        is_zealot[order[i]] = 1;
+        state[order[i]] = zealot_strategy_b;
+    }
+    int n_free = g.n - n_zealot - n_zealot_b;
 
     const double sin120 = std::sqrt(3.0) / 2.0;
     double sr=0,sp=0,ss=0,spr=0,spi=0,conv=0;
