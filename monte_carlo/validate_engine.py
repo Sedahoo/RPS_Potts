@@ -1,10 +1,7 @@
 """
-Phase 3 validation: prove the C++ engine (drivers/mc_engine) matches the
+Engine validation: prove the C++ engine (drivers/mc_engine) matches the
 pure-Python MC, and measure the speedup. Same graph through both; the RNGs
 differ so m_psi agrees within stochastic noise, not to the digit.
-
-The engine used to live here; after the refactor it lives in drivers/ and is
-shared by every phase. This script just validates it.
 """
 
 import os, sys, time

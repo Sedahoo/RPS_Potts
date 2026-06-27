@@ -22,38 +22,39 @@ the cyclic-dominance strength `eps`?  (Answer: yes.)
 python3 -m venv --system-site-packages .venv   # reuse system numpy/matplotlib
 ./.venv/bin/pip install networkx
 ```
-C++ needs g++ with C++20 (`make -C phase3_cpp`).
+C++ needs g++ with C++20 (`make -C drivers`).
 
-## Phases
+## Layout
 
-**Shared code (after refactor):**
+Folders are named by **what they study**. `WALKTHROUGH.md` lists the files in
+the order they were built (the learning path), if you want the guided tour.
+
+**Shared code:**
 
 | Dir | What it holds |
 |-----|---------------|
 | `drivers/`  | the single C++ engine `mc_engine` (plain MC + optional zealots) + Makefile + xoshiro.h |
-| `common/`   | shared Python: `graphs` (build/write/degree-dist), `observables` (m_psi), `meanfield` (HMF+DMF), `mc_python` (reference MC), `runner` (call the engine) |
+| `common/`   | shared Python: `graphs` (build/write/degree-dist/defects), `observables` (m_psi), `meanfield` (HMF+DMF), `mc_python` (reference MC), `runner` (call the engine, `run_many`) |
 
-**Phases (each imports from `common/`, calls `drivers/mc_engine`):**
+**Studies (each imports from `common/`, calls `drivers/mc_engine`):**
 
-| Dir | What it builds | Key output |
+| Dir | What it covers | Key output |
 |-----|----------------|------------|
-| `phase1_hmf/`     | Homogeneous mean field (3 ODEs, no network) | transition curve; order vs cycling |
-| `phase2_mc/`      | Agent-level Monte Carlo on ER/BA; MC-vs-HMF validation | finite-size physics the mean field misses |
-| `phase3_cpp/`     | Validates the C++ engine vs pure Python (~40x faster) | trust + speed |
-| `phase4_pipeline/`| Parallel `(k, eps)` sweep -> phase diagram heatmap | the headline "connectivity stabilises order" figure |
-| `phase5_meanfield/`| Degree-based mean field + MC/HMF/DMF comparison | DMF beats HMF, more so on BA |
-| `phase6_figures/` | ternary simplex, finite-size scaling, fixed-point stability | the standard figure set |
-| `phase7_zealots/` | stubborn-node experiments (random/hub/mixed factions) | zealots provoke their own predator |
-| `phase8_defects/` | edge/node quenching (defects) | defects erode order via effective <k> |
+| `mean_field/`   | HMF + DMF analytical models; MC/HMF/DMF comparison | transition curve; DMF beats HMF on BA |
+| `monte_carlo/`  | agent-level MC reference; MC-vs-HMF; engine validation | finite-size physics; ~40x speedup check |
+| `phase_diagram/`| parallel `(k, eps)` sweep -> phase-diagram heatmap | the "connectivity stabilises order" figure |
+| `dynamics/`     | ternary simplex, finite-size scaling, fixed-point stability | the standard figure set |
+| `zealots/`      | stubborn-node experiments (random / hub / mixed factions) | zealots provoke their own predator |
+| `defects/`      | edge/node quenching (quenched disorder) | defects erode order via effective <k> |
 
-See `FINDINGS.md` for the results of the iteration experiments (phases 7-8).
+See `FINDINGS.md` for the results of the iteration experiments (`zealots/`, `defects/`).
 
 Run examples:
 ```bash
-./.venv/bin/python phase1_hmf/hmf.py
-./.venv/bin/python phase2_mc/mc.py --graph ER --n 500 --k 10
-bash phase4_pipeline/run.sh ER          # or BA
-./.venv/bin/python phase5_meanfield/compare_suite.py --graph BA --k 10
+./.venv/bin/python mean_field/hmf.py
+./.venv/bin/python monte_carlo/mc.py --graph ER --n 500 --k 10
+bash phase_diagram/run.sh ER          # or BA
+./.venv/bin/python mean_field/compare_suite.py --graph BA --k 10
 ```
 
 ## What's next (iteration ideas, from the thesis future-work)
@@ -68,6 +69,6 @@ bash phase4_pipeline/run.sh ER          # or BA
 - In the ORIGINAL repo the C++ filenames are swapped: `hmf_simulation.cpp` is
   really DMF, `sde_simulation.cpp` is really HMF. This recreation names things
   correctly.
-- `phase4_pipeline/run.sh` uses GNU parallel if present, else `xargs -P`.
+- `phase_diagram/run.sh` uses GNU parallel if present, else `xargs -P`.
 - The venv `python` is a symlink: use `$(cd .venv/bin && pwd)/python`, never
   `realpath` (which resolves the symlink out of the venv).
