@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common.graphs import build_graph, write_edgelist
+from common.io import save_table
 from common import runner
 
 N, K, ZS = 800, 10, 0      # zealots play Rock (strategy 0)
@@ -30,6 +31,7 @@ def main():
     z_vals = np.linspace(0.0, 0.20, 17)
     regimes = [("Ordering phase (eps=0.3)", 0.3), ("Cycling phase (eps=0.9)", 0.9)]
 
+    cols = {"z": z_vals}
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     for ax, (title, eps) in zip(axes, regimes):
         jobs = [dict(edgelist=el, eps=eps, zealot_frac=float(z), zealot_strategy=ZS, seed=s)
@@ -37,6 +39,8 @@ def main():
         res = runner.run_many(jobs)
         conv = np.array([r["conversion"] for r in res]).reshape(len(z_vals), len(SEEDS)).mean(axis=1)
         mpsi = np.array([r["m_psi"] for r in res]).reshape(len(z_vals), len(SEEDS)).mean(axis=1)
+        tag = "order" if eps < 0.5 else "cycle"
+        cols[f"{tag}_conversion"] = conv; cols[f"{tag}_mpsi"] = mpsi
         ax.plot(z_vals, conv, "o-", color="tab:red",
                 label="conversion (free nodes playing Rock)")
         ax.plot(z_vals, mpsi, "s-", color="tab:purple", label=r"$m_\psi$ (global order)")
@@ -51,6 +55,7 @@ def main():
         os.remove(el)
     fig.savefig("zealots.png", dpi=130)
     print("Saved zealots.png")
+    save_table("zealots.csv", cols)
 
 
 if __name__ == "__main__":

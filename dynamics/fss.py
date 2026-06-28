@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common.graphs import build_graph, write_edgelist
+from common.io import save_table
 from common import runner
 
 
@@ -26,10 +27,14 @@ def main():
     runner.ensure_engine()
     k = 10
     eps_vals = np.linspace(0.35, 0.75, 21)
+    cols = {"epsilon": eps_vals}
     plt.figure(figsize=(8, 5.5))
     for N in [200, 500, 1000, 2000]:
-        plt.plot(eps_vals, mc_curve(N, k, eps_vals), "o-", ms=3, label=f"N = {N}")
+        m = mc_curve(N, k, eps_vals)
+        cols[f"N{N}"] = m
+        plt.plot(eps_vals, m, "o-", ms=3, label=f"N = {N}")
         print(f"  N={N:>4} done")
+    save_table("fss.csv", cols)
     plt.axhline(0.5, color="gray", ls="--", lw=1)
     plt.xlabel("epsilon"); plt.ylabel(r"$m_\psi$")
     plt.title(f"Phase 6b: finite-size scaling (ER, <k>={k}, T=0.65)\n"

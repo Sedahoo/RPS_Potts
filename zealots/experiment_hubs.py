@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common.graphs import build_graph, write_edgelist
+from common.io import save_table
 from common import runner
 
 N, K = 800, 10
@@ -44,10 +45,13 @@ def main():
     z_vals = np.linspace(0.0, 0.10, 16)
     regimes = [("Ordering phase (eps=0.3)", 0.3), ("Cycling phase (eps=0.9)", 0.9)]
 
+    cols = {"z": z_vals}
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     for ax, (title, eps) in zip(axes, regimes):
+        tag = "order" if eps < 0.5 else "cycle"
         for target, col in [("random", "tab:blue"), ("hub", "tab:orange")]:
             mp, cv = curve(edgelists, eps, z_vals, target)
+            cols[f"{tag}_{target}_mpsi"] = mp; cols[f"{tag}_{target}_conversion"] = cv
             ax.plot(z_vals, mp, "s-", color=col, label=f"{target}: $m_\\psi$")
             ax.plot(z_vals, cv, "o--", color=col, alpha=0.6, label=f"{target}: conversion")
         ax.axhline(1/3, color="gray", ls=":", lw=1)
@@ -61,6 +65,7 @@ def main():
         os.remove(el)
     fig.savefig("zealots_hubs.png", dpi=130)
     print("Saved zealots_hubs.png")
+    save_table("zealots_hubs.csv", cols)
 
 
 if __name__ == "__main__":

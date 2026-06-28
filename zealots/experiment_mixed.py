@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common.graphs import build_graph, write_edgelist
+from common.io import save_table
 from common import runner
 
 N, K = 800, 10
@@ -30,6 +31,7 @@ def main():
     z_vals = np.linspace(0.0, 0.10, 16)        # each faction gets z (total 2z)
     regimes = [("Ordering phase (eps=0.3)", 0.3), ("Cycling phase (eps=0.9)", 0.9)]
 
+    cols = {"z": z_vals}
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     for ax, (title, eps) in zip(axes, regimes):
         jobs = [dict(edgelist=el, eps=eps,
@@ -41,6 +43,9 @@ def main():
         def avg(key):
             return np.array([r[key] for r in res]).reshape(len(z_vals), len(SEEDS)).mean(axis=1)
         r, p, s, m = avg("r"), avg("p"), avg("s"), avg("m_psi")
+        tag = "order" if eps < 0.5 else "cycle"
+        cols[f"{tag}_rho_rock"] = r; cols[f"{tag}_rho_paper"] = p
+        cols[f"{tag}_rho_scissors"] = s; cols[f"{tag}_mpsi"] = m
 
         ax.plot(z_vals, r, "o-", color="tab:red",    label=r"$\rho_{rock}$ (incl. zealots)")
         ax.plot(z_vals, p, "o-", color="tab:green",  label=r"$\rho_{paper}$ (incl. zealots)")
@@ -58,6 +63,7 @@ def main():
         os.remove(el)
     fig.savefig("zealots_mixed.png", dpi=130)
     print("Saved zealots_mixed.png")
+    save_table("zealots_mixed.csv", cols)
 
 
 if __name__ == "__main__":

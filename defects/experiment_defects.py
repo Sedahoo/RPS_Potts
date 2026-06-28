@@ -49,12 +49,15 @@ def main():
     panels = [("Edge defects (disabled links)", remove_edges),
               ("Node defects (vacancies)", remove_nodes)]
 
+    rows = []   # long-format CSV: defect_type(0=edge,1=node), f, epsilon, m_psi, mean_k
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    for ax, (title, fn) in zip(axes, panels):
+    for type_code, (ax, (title, fn)) in enumerate(zip(axes, panels)):
         for f in fracs:
             m, mean_k = curve(fn, f, eps_vals)
             ax.plot(eps_vals, m, "o-", ms=3,
                     label=f"f={f:.1f}  (<k>~{mean_k:.0f})")
+            for e, mv in zip(eps_vals, m):
+                rows.append((type_code, f, e, mv, mean_k))
         ax.axhline(0.5, color="gray", ls="--", lw=1)
         ax.set_title(title); ax.set_xlabel("epsilon"); ax.set_ylim(-0.02, 1.05)
         ax.legend(title="defect fraction", fontsize=8)
@@ -64,6 +67,9 @@ def main():
     fig.tight_layout()
     fig.savefig("defects.png", dpi=130)
     print("Saved defects.png")
+    np.savetxt("defects.csv", np.array(rows), delimiter=",",
+               header="defect_type_0edge_1node,f,epsilon,m_psi,mean_k", comments="")
+    print("Saved defects.csv")
 
 
 if __name__ == "__main__":

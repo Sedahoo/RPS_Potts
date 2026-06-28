@@ -13,6 +13,7 @@ from common.graphs import build_graph, neighbor_lists
 from common.mc_python import run_mc
 from common.meanfield import hmf_run
 from common.observables import order_parameter
+from common.io import save_table
 
 
 def main():
@@ -38,6 +39,7 @@ def main():
     plt.ylim(-0.02, 1.05); plt.legend(); plt.tight_layout()
     plt.savefig("mc_vs_hmf.png", dpi=130)
     print("Saved mc_vs_hmf.png")
+    save_table("mc_vs_hmf.csv", {"epsilon": eps_values, "hmf": hmf, "mc": mc})
 
 
 if __name__ == "__main__":

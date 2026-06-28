@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common.graphs import build_graph, write_edgelist, degree_dist
 from common.meanfield import hmf_run, dmf_run
 from common.observables import order_parameter
+from common.io import save_table
 from common import runner
 
 
@@ -53,6 +54,8 @@ def main():
     out = f"comparison_suite_{a.graph}_k{a.k}.png"
     plt.savefig(out, dpi=130)
     print(f"Saved {out}")
+    save_table(f"comparison_suite_{a.graph}_k{a.k}.csv",
+               {"epsilon": eps_vals, "mc": mc, "hmf": hmf, "dmf": dmf})
     print(f"  RMSE(HMF, MC) = {rmse_hmf:.4f} | RMSE(DMF, MC) = {rmse_dmf:.4f} | "
           f"winner: {'DMF' if rmse_dmf < rmse_hmf else 'HMF'}")
 

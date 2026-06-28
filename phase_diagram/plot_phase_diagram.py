@@ -54,6 +54,14 @@ def main():
     fig.savefig(a.output, dpi=130)
     print(f"Saved {a.output}")
 
+    # save the grid behind the heatmap as long-format CSV (degree, epsilon, m_psi)
+    rows = [(k, eps_vals[j], grid[i, j])
+            for i, k in enumerate(degs) for j in range(eps_num)]
+    csv_path = a.output.rsplit(".", 1)[0] + ".csv"
+    np.savetxt(csv_path, np.array(rows), delimiter=",",
+               header="degree,epsilon,m_psi", comments="")
+    print(f"Saved {csv_path}")
+
 
 if __name__ == "__main__":
     main()
