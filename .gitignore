@@ -11,3 +11,9 @@ drivers/mc_engine
 _*.edgelist
 jobs_*.txt
 temp_*/
+
+# LaTeX report intermediates
+report.tex
+report.aux
+report.log
+report.out
