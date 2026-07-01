@@ -1,0 +1,4 @@
+BA: <k>=9.94, 45 distinct degrees (max=95)
+Saved comparison_suite_BA_k10.png
+Saved comparison_suite_BA_k10.csv
+  RMSE(HMF, MC) = 0.3357 | RMSE(DMF, MC) = 0.3280 | winner: DMF

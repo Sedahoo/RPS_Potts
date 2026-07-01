@@ -1,0 +1,4 @@
+ER: <k>=9.82, 19 distinct degrees (max=20)
+Saved comparison_suite_ER_k10.png
+Saved comparison_suite_ER_k10.csv
+  RMSE(HMF, MC) = 0.3376 | RMSE(DMF, MC) = 0.3340 | winner: DMF

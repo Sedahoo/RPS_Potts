@@ -1,0 +1,29 @@
+===== Phase 4 pipeline: BA, N=800, 16 jobs =====
+--- generating graphs (k=2..40 step 2) ---
+  k=2: N=800, edges=799
+  k=4: N=800, edges=1596
+  k=6: N=800, edges=2391
+  k=8: N=800, edges=3184
+  k=10: N=800, edges=3975
+  k=12: N=800, edges=4764
+  k=14: N=800, edges=5551
+  k=16: N=800, edges=6336
+  k=18: N=800, edges=7119
+  k=20: N=800, edges=7900
+  k=22: N=800, edges=8679
+  k=24: N=800, edges=9456
+  k=26: N=800, edges=10231
+  k=28: N=800, edges=11004
+  k=30: N=800, edges=11775
+  k=32: N=800, edges=12544
+  k=34: N=800, edges=13311
+  k=36: N=800, edges=14076
+  k=38: N=800, edges=14839
+  k=40: N=800, edges=15600
+--- building job list ---
+--- running 520 simulations across 16 cores ---
+(GNU parallel not found -> using xargs -P fallback)
+--- plotting ---
+Saved phase_diagram_BA.png
+Saved phase_diagram_BA.csv
+Done -> phase_diagram_BA.png

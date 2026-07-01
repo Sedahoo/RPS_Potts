@@ -1,0 +1,4 @@
+ER graph: N=499, <k>~10, T=0.65
+  eps=0.2:  m_psi=0.997
+  eps=0.9:  m_psi=0.001
+Saved mc_phase2_ER.png

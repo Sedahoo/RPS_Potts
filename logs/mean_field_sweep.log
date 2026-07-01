@@ -1,0 +1,7 @@
+  k=  2:  transition near epsilon ~ 0.08
+  k=  5:  transition near epsilon ~ 0.50
+  k= 10:  transition near epsilon ~ 0.64
+  k= 50:  transition near epsilon ~ 0.66
+  k=200:  transition near epsilon ~ 0.70
+Saved hmf_sweep.csv
+Saved hmf_sweep.png

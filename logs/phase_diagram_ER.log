@@ -1,0 +1,29 @@
+===== Phase 4 pipeline: ER, N=800, 16 jobs =====
+--- generating graphs (k=2..40 step 2) ---
+  k=2: N=627, edges=745
+  k=4: N=783, edges=1592
+  k=6: N=797, edges=2391
+  k=8: N=800, edges=3165
+  k=10: N=800, edges=3928
+  k=12: N=800, edges=4712
+  k=14: N=800, edges=5537
+  k=16: N=800, edges=6373
+  k=18: N=800, edges=7198
+  k=20: N=800, edges=8038
+  k=22: N=800, edges=8858
+  k=24: N=800, edges=9626
+  k=26: N=800, edges=10417
+  k=28: N=800, edges=11182
+  k=30: N=800, edges=11964
+  k=32: N=800, edges=12748
+  k=34: N=800, edges=13507
+  k=36: N=800, edges=14305
+  k=38: N=800, edges=15136
+  k=40: N=800, edges=15938
+--- building job list ---
+--- running 520 simulations across 16 cores ---
+(GNU parallel not found -> using xargs -P fallback)
+--- plotting ---
+Saved phase_diagram_ER.png
+Saved phase_diagram_ER.csv
+Done -> phase_diagram_ER.png

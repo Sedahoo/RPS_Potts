@@ -1,0 +1,17 @@
+label,status,seconds,started_iso,log
+test_validate_engine,OK,4,2026-07-01T14:32:03+05:30,logs/test_validate_engine.log
+mean_field_hmf,OK,1,2026-07-01T14:32:07+05:30,logs/mean_field_hmf.log
+mean_field_sweep,OK,6,2026-07-01T14:32:08+05:30,logs/mean_field_sweep.log
+mean_field_compare_suite_ER,OK,6,2026-07-01T14:32:14+05:30,logs/mean_field_compare_suite_ER.log
+mean_field_compare_suite_BA,OK,6,2026-07-01T14:32:20+05:30,logs/mean_field_compare_suite_BA.log
+monte_carlo_mc,OK,3,2026-07-01T14:32:26+05:30,logs/monte_carlo_mc.log
+monte_carlo_compare,OK,79,2026-07-01T14:32:29+05:30,logs/monte_carlo_compare.log
+phase_diagram_ER,OK,6,2026-07-01T14:33:48+05:30,logs/phase_diagram_ER.log
+phase_diagram_BA,OK,6,2026-07-01T14:33:54+05:30,logs/phase_diagram_BA.log
+dynamics_ternary,OK,2,2026-07-01T14:34:00+05:30,logs/dynamics_ternary.log
+dynamics_fss,OK,3,2026-07-01T14:34:02+05:30,logs/dynamics_fss.log
+dynamics_stability,OK,0,2026-07-01T14:34:05+05:30,logs/dynamics_stability.log
+zealots_experiment,OK,3,2026-07-01T14:34:05+05:30,logs/zealots_experiment.log
+zealots_experiment_hubs,OK,4,2026-07-01T14:34:08+05:30,logs/zealots_experiment_hubs.log
+zealots_experiment_mixed,OK,2,2026-07-01T14:34:12+05:30,logs/zealots_experiment_mixed.log
+defects_experiment,OK,8,2026-07-01T14:34:14+05:30,logs/defects_experiment.log
