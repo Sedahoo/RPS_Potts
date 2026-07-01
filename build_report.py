@@ -96,6 +96,11 @@ w(r"\end{table}")
 
 # ============================================================ 2. ENGINE VALIDATION
 w(r"\section*{2.\quad Engine validation (C++ vs pure-Python MC)}")
+w(r"\textit{What it is.} A correctness cross-check: the same graph is evolved by "
+  r"the fast C++ engine and by an independent pure-Python Monte-Carlo reference, at "
+  r"four values of $\varepsilon$ spanning both phases. Because the two use different "
+  r"RNG streams, agreement is expected in \emph{regime} (ordered vs cycling), not in "
+  r"the last digit. This licenses using the C++ engine for everything below.")
 w(r"Same graph through both engines; independent RNG streams, so agreement is in "
   r"phase not last digit (log: \texttt{test\_validate\_engine.log}).")
 val = [(0.2, 0.999, 0.999), (0.5, 0.991, 0.992), (0.7, 0.004, 0.007), (0.9, 0.004, 0.003)]
@@ -115,6 +120,12 @@ w(r"\section*{3.\quad Mean field and Monte Carlo (recreation core)}")
 sw = load("mean_field/hmf_sweep.csv")
 ks = [c for c in sw.dtype.names if c != "epsilon"]
 w(r"\subsection*{3.1\quad HMF $\varepsilon$-sweep: connectivity stabilises order}")
+w(r"\textit{What it is.} The homogeneous mean field replaces the network by three "
+  r"coupled ODEs for the population fractions $(r,p,s)$, in which every node feels the "
+  r"same mean degree $\langle k\rangle$. We integrate to steady state and sweep the "
+  r"cyclic-dominance strength $\varepsilon$ at several $\langle k\rangle$, recording "
+  r"$m_\psi$. It is the cheapest probe of the order$\to$cycling transition and how the "
+  r"critical point \epsc{} depends on connectivity.")
 w(r"\begin{minipage}[t]{0.46\textwidth}\vspace{0pt}")
 w(r"\begin{tabular}{lcccc c}\toprule")
 w(r"$\langle k\rangle$ & " + " & ".join(k[1:] for k in ks) + r"\\")
@@ -128,6 +139,13 @@ w(r"\includegraphics[width=\linewidth]{mean_field/hmf_sweep.png}\end{minipage}")
 
 # 3.2 comparison suite
 w(r"\subsection*{3.2\quad MC vs HMF vs DMF: RMSE against ground truth ($\langle k\rangle{=}10$)}")
+w(r"\textit{What it is.} A three-way accuracy test. We compute $m_\psi(\varepsilon)$ "
+  r"three ways on the same $\langle k\rangle{=}10$ setting: full agent-level \textbf{MC} "
+  r"(the ground truth), \textbf{HMF} (one mean degree), and \textbf{DMF} (degree-based "
+  r"mean field, one ODE class per degree, using the full $P(k)$). We score each mean "
+  r"field by its root-mean-square error against MC across the sweep. The question: does "
+  r"resolving the degree distribution (DMF) buy accuracy, and does that gain grow on a "
+  r"heterogeneous BA graph with hubs?")
 rows = []
 for g in ["ER", "BA"]:
     d = load(f"mean_field/comparison_suite_{g}_k10.csv")
@@ -150,6 +168,9 @@ w(r"\caption{Comparison suite, ER (left) and BA (right).}\end{figure}")
 # 3.3 MC vs HMF overlay
 d = load("monte_carlo/mc_vs_hmf.csv")
 w(r"\subsection*{3.3\quad Direct MC vs HMF overlay (ER, $\langle k\rangle{=}10$)}")
+w(r"\textit{What it is.} A head-to-head on a single ER graph: the MC transition curve "
+  r"overlaid on the HMF prediction, to see exactly where and by how much the mean-field "
+  r"approximation misplaces the critical point on a finite network.")
 w(r"\begin{minipage}[t]{0.44\textwidth}\vspace{0pt}")
 w(r"\begin{tabular}{lc}\toprule model & \epsc{}\\\midrule")
 w(rf"MC (ground truth) & {f2(epsc(d['epsilon'], d['mc']))}\\")
@@ -161,6 +182,12 @@ w(r"\includegraphics[width=\linewidth]{monte_carlo/mc_vs_hmf.png}\end{minipage}"
 
 # ============================================================ 4. PHASE DIAGRAM
 w(r"\section*{4.\quad Phase diagram: $(\langle k\rangle\times\varepsilon)$ MC sweep}")
+w(r"\textit{What it is.} The master recreation result. For each mean degree we build a "
+  r"graph and run full MC across the whole $\varepsilon$ range, tiling the "
+  r"$(\langle k\rangle,\varepsilon)$ plane with the measured order parameter to map the "
+  r"order/cycling boundary directly from agent-level dynamics (no mean-field "
+  r"assumption). Run for both ER and BA to isolate whether the boundary is set by "
+  r"average degree or by the shape of $P(k)$.")
 w(r"520 simulations per graph (20 degrees $\times$ 26 $\varepsilon$), $N{=}800$, fanned "
   r"across 16 cores in $\sim$6\,s each.")
 per = {}
@@ -183,6 +210,13 @@ w(r"\caption{MC phase diagrams: ER (left), BA (right).}\end{figure}")
 
 # ============================================================ 5. DYNAMICS / FSS
 w(r"\section*{5.\quad Dynamics and finite-size scaling}")
+w(r"\textit{What it is.} Three views that confirm the transition is a real phase "
+  r"transition rather than a finite-size or dynamical artefact. \textbf{FSS:} rerun the "
+  r"MC transition curve at growing system size $N$ and watch it sharpen and its midpoint "
+  r"converge. \textbf{Ternary portrait:} plot the trajectory in the $(r,p,s)$ "
+  r"composition simplex --- a fixed corner means consensus, a closed orbit means the "
+  r"endless RPS chase. \textbf{Stability:} classify the mean-field fixed points "
+  r"(consensus vs limit cycle) on either side of \epsc{}.")
 fss = load("dynamics/fss.csv")
 Ns = [c for c in fss.dtype.names if c != "epsilon"]
 w(r"\begin{table}[H]\centering\small\begin{tabular}{lcccc}\toprule")
@@ -202,11 +236,23 @@ w(r"\caption{Left: FSS. Middle: ternary phase portrait (corner consensus below "
 
 # ============================================================ 6. PERTURBATION EXPERIMENTS
 w(r"\section*{6.\quad Perturbation experiments (new results)}")
+w(r"These four studies go beyond the recreation: having mapped the clean transition, we "
+  r"now stress the ordered phase with targeted perturbations --- stubborn agents, "
+  r"structural targeting, competition, and quenched network damage --- to ask how robust "
+  r"consensus is and how a cyclic (RPS) system responds to interference. Each is run in "
+  r"both the ordering phase ($\varepsilon{=}0.3$) and the cycling phase "
+  r"($\varepsilon{=}0.9$), averaged over many graph seeds.")
 
 # 6.1 single-faction zealots
 z = load("zealots/zealots.csv")
 sel = [0, 4, 8, 12, 16]            # z = 0, .05, .10, .15, .20
 w(r"\subsection*{6.1\quad Single Rock-zealot faction (ER, $\langle k\rangle{=}10$, 12 seeds)}")
+w(r"\textit{What it is.} A fraction $z$ of nodes are turned into \emph{zealots} "
+  r"permanently locked to Rock (they influence neighbours but never update). We grow $z$ "
+  r"and track two things: \emph{conversion} (what fraction of the remaining \emph{free} "
+  r"nodes end up playing Rock) and the global order $m_\psi$. The classic question of "
+  r"whether a committed minority can drive consensus --- but asked in a cyclic system, "
+  r"where pushing Rock also feeds Rock's predator.")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$z$ & conv$_{\text{ord}}$ & \mpsi$_{\text{ord}}$ & conv$_{\text{cyc}}$ & \mpsi$_{\text{cyc}}$\\\midrule")
@@ -226,6 +272,12 @@ h = load("zealots/zealots_hubs.csv")
 selh = [0, 4, 8, 12, 15]           # z up to 0.10
 amp = h["cycle_hub_mpsi"][-1] / max(h["cycle_random_mpsi"][-1], 1e-9)
 w(r"\subsection*{6.2\quad Hub vs random placement (BA, 15 seeds)}")
+w(r"\textit{What it is.} The same Rock-zealots, but now we compare \emph{where} they sit "
+  r"on a scale-free BA network: spread at random versus concentrated on the "
+  r"highest-degree \emph{hubs}. Since hubs touch far more neighbours, this tests how much "
+  r"raw structural targeting amplifies a minority's reach --- and whether that extra "
+  r"reach lets it dictate \emph{which} strategy wins, or merely \emph{whether} the "
+  r"network orders at all.")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$z$ & \mpsi$^{\text{rand}}_{\text{cyc}}$ & \mpsi$^{\text{hub}}_{\text{cyc}}$ "
@@ -243,6 +295,11 @@ w(r"\includegraphics[width=\linewidth]{zealots/zealots_hubs.png}\end{minipage}")
 # 6.3 competing factions
 mx = load("zealots/zealots_mixed.csv")
 w(r"\subsection*{6.3\quad Competing Rock+Paper factions (ER, 12 seeds)}")
+w(r"\textit{What it is.} Two opposing zealot factions of equal size $z$ --- one locked to "
+  r"Rock, one to Paper --- are grown together, and we watch the composition of the free "
+  r"population $(\rho_{\text{rock}},\rho_{\text{paper}},\rho_{\text{sciss}})$. In a cyclic "
+  r"game the naive guess is that the two cancel and the third strategy (Scissors, which "
+  r"beats Paper) profits; this experiment checks whether that actually happens.")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lccc}\toprule")
 w(r"$z$ (each) & $\rho_{\text{rock}}$ & $\rho_{\text{paper}}$ & $\rho_{\text{sciss}}$"
@@ -261,6 +318,12 @@ w(r"\includegraphics[width=\linewidth]{zealots/zealots_mixed.png}\end{minipage}"
 # 6.4 defects
 d = load("defects/defects.csv")
 w(r"\subsection*{6.4\quad Network defects: edge vs node quenching (ER, 6 seeds)}")
+w(r"\textit{What it is.} Instead of adding agents we \emph{damage} the network: remove a "
+  r"fraction $f$ of edges (broken links) or of nodes (vacancies), then measure how the "
+  r"$\varepsilon$-transition moves. This is the mirror image of Sec.~3.1 --- if "
+  r"connectivity stabilises order, quenched disorder should erode it --- and comparing "
+  r"the two damage types (matched by the mean degree they leave behind) tests whether "
+  r"only the effective $\langle k\rangle$ matters.")
 fr = sorted(set(d["f"]))
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
