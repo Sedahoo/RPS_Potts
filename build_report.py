@@ -43,7 +43,7 @@ def w(s=""):
 # ============================================================ PREAMBLE
 w(r"""\documentclass[10pt]{article}
 \usepackage[a4paper,margin=1.6cm]{geometry}
-\usepackage{booktabs,graphicx,caption,float,xcolor,amsmath,array,longtable}
+\usepackage{booktabs,graphicx,caption,float,xcolor,amsmath,amssymb,array,longtable}
 \usepackage[dvipsnames]{xcolor}
 \definecolor{hl}{RGB}{0,90,160}
 \definecolor{ok}{RGB}{20,120,70}
@@ -328,7 +328,12 @@ for i in sel:
 w(r"\bottomrule\end{tabular}\\[4pt]")
 w(r"conv $=$ fraction of \emph{free} nodes playing Rock. Ordering phase: Rock-conversion "
   r"collapses to $\sim$0 by $z{\approx}0.05$ --- the free network flips to \textbf{Paper} "
-  r"(Rock's predator). Cycling phase: only weak induced order, strategy cannot be pinned."
+  r"(Rock's predator). Cycling phase: only weak induced order, strategy cannot be pinned.\\[4pt]"
+  r"\textbf{Conclusion.} A committed minority cannot spread its own strategy in a cyclic "
+  r"system --- every zealot acts as food for its predator, so pushing Rock elects Paper. "
+  r"And the two phases fail oppositely: the ordered phase is \emph{compositionally "
+  r"fragile} (5\% zealots dictate the winner) while the cycling phase is nearly immune "
+  r"(\mpsi{} only 0.18 even at $z{=}0.20$)."
   r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.48\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{zealots/zealots.png}\end{minipage}")
@@ -354,7 +359,14 @@ for i in selh:
 w(r"\bottomrule\end{tabular}\\[4pt]")
 w(rf"Cycling phase at $z{{=}}0.10$: hub \mpsi$={f2(h['cycle_hub_mpsi'][-1])}$ vs random "
   rf"$={f2(h['cycle_random_mpsi'][-1])}$ --- a \textbf{{{amp:.1f}$\times$ amplification}}. "
-  r"Hubs control \emph{whether} the network orders, not \emph{what} it orders on.\end{minipage}\hfill")
+  r"Hubs control \emph{whether} the network orders, not \emph{what} it orders on.\\[4pt]"
+  r"\textbf{Conclusion.} Position beats numbers: the same zealot budget is worth "
+  r"$\sim$9$\times$ more on hubs. But structural leverage only sets the \emph{onset} of "
+  r"order --- the cycle still picks the winner (Paper), except at $z{\gtrsim}0.08$ in the "
+  r"ordering phase, where hubs saturate their neighbourhoods and finally pin their own "
+  r"strategy (conversion$\to$1). Minority takeover is possible, but only with both "
+  r"structural targeting \emph{and} an already-ordering system."
+  r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.48\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{zealots/zealots_hubs.png}\end{minipage}")
 
@@ -377,7 +389,13 @@ w(r"\bottomrule\end{tabular}\\[4pt]")
 w(r"With equal Rock+Paper zealots, the ordering-phase free population goes to "
   r"\textbf{Paper} ($\rho{\approx}0.90$), \emph{not} Scissors: Paper is reinforced both by "
   r"its own zealots and by the Rock-zealots it preys on. Cycling phase stays robust "
-  r"(\mpsi$\approx$0.08).\end{minipage}\hfill")
+  r"(\mpsi$\approx$0.08).\\[4pt]"
+  r"\textbf{Conclusion.} Competition between committed factions is decided by the cyclic "
+  r"relation between them, not by their (equal) sizes: the faction that preys on the "
+  r"other collects a double reinforcement and wins outright, while the bystander "
+  r"strategy is eliminated ($\rho_{\text{sciss}}\to0$). Equal-and-opposite zealotry does "
+  r"not cancel --- it amplifies the predator."
+  r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.48\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{zealots/zealots_mixed.png}\end{minipage}")
 
@@ -402,7 +420,11 @@ for f in fr:
 w(r"\bottomrule\end{tabular}\\[4pt]")
 w(r"Removing edges or nodes slides \epsc{} down ($0.64\!\to\!0.24$). Edge and node "
   r"defects \textbf{coincide} once matched by the resulting $\langle k\rangle$ "
-  r"$\Rightarrow$ order-stability depends on effective $\langle k\rangle$ only."
+  r"$\Rightarrow$ order-stability depends on effective $\langle k\rangle$ only.\\[4pt]"
+  r"\textbf{Conclusion.} \emph{How much} you damage matters; \emph{how} you damage does "
+  r"not. The transition of a damaged network is predictable from a single number --- its "
+  r"surviving mean degree --- so consensus robustness can be audited by counting links, "
+  r"without knowing which links or nodes were lost."
   r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.48\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{defects/defects.png}\end{minipage}")
@@ -423,9 +445,36 @@ w(rf"\begin{{tabular}}{{lc}}\toprule quantity & value\\\midrule "
 w(r"\small All eight damaged-network points (4 edge + 4 node, and at a different $N$ "
   r"than the pristine sweep) fall on the undamaged boundary: a damaged network is "
   r"indistinguishable from a pristine one of the same average degree. "
-  r"Data: \texttt{defects\_collapse.csv}.\end{minipage}\hfill")
+  r"Data: \texttt{defects\_collapse.csv}.\\[4pt]"
+  r"\textbf{Conclusion.} Together with Sec.~4.1 (ER $\equiv$ BA within 0.04), this "
+  r"collapses every network studied --- random or scale-free, pristine or damaged, "
+  r"$N{=}800$ or $1000$ --- onto a \emph{one-parameter family}: order stability in this "
+  r"model is a function of $\langle k\rangle$ alone. Neither the shape of $P(k)$ nor the "
+  r"damage history leaves a measurable trace at this resolution."
+  r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.54\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{defects/defects_collapse.png}\end{minipage}")
+
+# 6.6 synthesis of the perturbation experiments
+w(r"\subsection*{6.6\quad What the perturbation experiments say together}")
+w(r"\begin{itemize}\itemsep2pt")
+w(r"\item \textbf{The two phases are vulnerable to different attacks.} The ordered "
+  r"(consensus) phase is \emph{compositionally} fragile --- 5\% zealots decide which "
+  r"strategy wins (6.1), and two competing factions hand it to the predator (6.3) --- "
+  r"but \emph{structurally} predictable: damage moves \epsc{} only through "
+  r"$\langle k\rangle$ (6.4--6.5). The cycling phase is the mirror image: almost immune "
+  r"to composition attacks (\mpsi$\le$0.18 at $z{=}0.20$) yet orderable by structural "
+  r"targeting of hubs (6.2).")
+w(r"\item \textbf{\emph{Whether} and \emph{what} have separate controls.} Whether the "
+  r"population orders is governed by connectivity and placement ($\langle k\rangle$, "
+  r"hubs); \emph{what} it orders on is governed by the cyclic predator logic, which no "
+  r"amount of random zealotry overrides --- only hub saturation in an already-ordering "
+  r"system does (6.2).")
+w(r"\item \textbf{Read as opinion dynamics:} planting stubborn agents backfires "
+  r"(elects the rival that beats you); buying the influencers buys consensus but not "
+  r"\emph{your} consensus; and cutting links erodes consensus by a predictable amount "
+  r"set by the surviving mean degree.")
+w(r"\end{itemize}")
 
 # ============================================================ 7. FINDINGS SUMMARY
 w(r"\section*{7.\quad Findings summary}")
