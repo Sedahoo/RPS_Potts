@@ -1,6 +1,6 @@
 # Run Report — full reproduction for presentation
 
-**Date:** 2026-07-01   **Host:** 16 cores   **Engine:** `drivers/mc_engine` (C++20, `-O3 -march=native`), clean-rebuilt
+**Date:** 2026-07-02   **Host:** 16 cores   **Engine:** `drivers/mc_engine` (C++20, `-O3 -march=native`), clean-rebuilt
 **Driver:** `./run_all.sh` (rebuilds engine → runs validation test → runs every simulation from its folder)
 **Logs:** `logs/` (one `<label>.log` per step, machine-readable `logs/manifest.csv`, combined `logs/run_*.log`)
 
@@ -14,7 +14,11 @@ Reproduce everything in ~2 min:
 
 ## Headline: everything ran green and is bit-for-bit reproducible
 
-- **16 / 16 steps OK**, exit code 0 (see `logs/manifest.csv`).
+- **18 / 18 steps OK**, exit code 0 (see `logs/manifest.csv`). The two newest
+  steps are the synthesis analyses: `phase_diagram/critical_boundary.py`
+  (extracted ε_c(⟨k⟩) boundary, ER vs BA vs HMF; max ER−BA gap **0.040**) and
+  `defects/collapse.py` (damaged networks collapse onto the pristine boundary;
+  edge−node gap **0.014**).
 - After the run, `git status` reports **zero** changes to any tracked figure or data table — every `.png` and `.csv` regenerated **byte-for-byte identical** to the committed version. Deterministic seeds → full reproducibility.
 - The C++ engine was validated against the independent pure-Python reference before any science was run.
 
@@ -96,13 +100,15 @@ Every step, its wall-clock time and log, is in `logs/manifest.csv`:
 | monte_carlo_compare | OK | 79 |
 | phase_diagram_ER | OK | 6 |
 | phase_diagram_BA | OK | 6 |
+| phase_diagram_boundary | OK | 0 |
 | dynamics_ternary | OK | 2 |
 | dynamics_fss | OK | 3 |
 | dynamics_stability | OK | 0 |
 | zealots_experiment | OK | 3 |
 | zealots_experiment_hubs | OK | 4 |
 | zealots_experiment_mixed | OK | 2 |
-| defects_experiment | OK | 8 |
+| defects_experiment | OK | 7 |
+| defects_collapse | OK | 1 |
 
 Total wall-clock ≈ 2 min (the 79 s `monte_carlo_compare` is the pure-Python HMF overlay; everything else is C++-backed).
 

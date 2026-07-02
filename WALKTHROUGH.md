@@ -16,6 +16,7 @@ scale, then iterate. Follow these steps in sequence to retrace that path.
 | 8 | `dynamics/ternary.py`, `dynamics/fss.py`, `dynamics/stability.py` | The standard figure set: simplex orbits, finite-size scaling, fixed-point stability. |
 | 9 | `zealots/experiment.py`, `experiment_hubs.py`, `experiment_mixed.py` | First new science: stubborn nodes. See `FINDINGS.md`. |
 | 10 | `defects/experiment_defects.py` | Quenched disorder: defects erode order via effective `<k>`. See `FINDINGS.md`. |
+| 11 | `phase_diagram/critical_boundary.py`, `defects/collapse.py` | Synthesis analyses: extract the eps_c(`<k>`) boundary (ER vs BA vs HMF), and the collapse test showing damaged networks land on the pristine boundary. |
 
 Shared infrastructure used throughout: the C++ engine in `drivers/` and the
 Python library in `common/` (graphs, observables, mean-field engines, runner).

@@ -23,3 +23,11 @@ strength `eps`), from the full stochastic MC. Reproduces the thesis's
   (ER) or hub-dominated (BA). (The degree distribution's effect shows up instead
   in how well DMF vs HMF approximate the MC — see `mean_field/`.) BA's boundary
   is slightly fuzzier due to degree heterogeneity.
+
+## The extracted boundary (`critical_boundary.py`)
+
+- Pulling eps_c(<k>) out of both heatmaps (interpolated m_psi=0.5 crossing) and
+  overlaying the HMF prediction gives the whole story in one curve:
+  **max |eps_c(ER) - eps_c(BA)| = 0.040** across all 20 degrees (they coincide),
+  and the HMF prediction sits **above** the MC boundary at every k (mean field
+  overestimates the ordered phase). Data: `critical_boundary.csv`.

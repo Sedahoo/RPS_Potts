@@ -16,3 +16,13 @@ Novel extension (not in the thesis): quenched disorder. Damage a dense ER graph
 Takeaway: defects are "connectivity stabilises order" run in reverse — you reach
 a sparse graph by breaking a dense one, and the physics only cares about the
 endpoint `<k>`.
+
+## The collapse test (`collapse.py`)
+
+- Plotting each damaged network's (resulting <k>, eps_c) point over the
+  pristine-ER boundary from `phase_diagram/`: **all eight points (4 edge + 4
+  node, even at different N) land on the pristine curve**, and
+  max |eps_c(edge) - eps_c(node)| at matched f is only **0.014**.
+- This is the strongest form of the finding: a damaged network is
+  indistinguishable from a pristine network of the same average degree.
+  Data: `defects_collapse.csv`.

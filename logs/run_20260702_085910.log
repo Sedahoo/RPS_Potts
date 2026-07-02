@@ -1,6 +1,6 @@
-########## FULL RUN 20260701_143202 ##########
+########## FULL RUN 20260702_085910 ##########
 host:    cores: 16   python: Python 3.14.4
-git:  9e85f35  (master)
+git:  ca07285  (master)
 
 ===== [engine] clean rebuild =====
   -> engine built OK
@@ -12,7 +12,7 @@ git:  9e85f35  (master)
     |   0.7 |        0.004      0.007 |       agree
     |   0.9 |        0.004      0.003 |       agree
     | --------------------------------------------------
-    | Python total:   3.34s | C++ total:   0.10s | speedup:  32.3x
+    | Python total:   3.27s | C++ total:   0.10s | speedup:  31.2x
 
 ===== [mean_field_hmf] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python hmf.py (in mean_field) =====
   -> OK in 1s  (log: logs/mean_field_hmf.log)
@@ -21,7 +21,7 @@ git:  9e85f35  (master)
     | Saved hmf_phase1.png
 
 ===== [mean_field_sweep] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python sweep.py (in mean_field) =====
-  -> OK in 6s  (log: logs/mean_field_sweep.log)
+  -> OK in 7s  (log: logs/mean_field_sweep.log)
     |   k=  5:  transition near epsilon ~ 0.50
     |   k= 10:  transition near epsilon ~ 0.64
     |   k= 50:  transition near epsilon ~ 0.66
@@ -30,7 +30,7 @@ git:  9e85f35  (master)
     | Saved hmf_sweep.png
 
 ===== [mean_field_compare_suite_ER] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python compare_suite.py --graph ER (in mean_field) =====
-  -> OK in 6s  (log: logs/mean_field_compare_suite_ER.log)
+  -> OK in 5s  (log: logs/mean_field_compare_suite_ER.log)
     | ER: <k>=9.82, 19 distinct degrees (max=20)
     | Saved comparison_suite_ER_k10.png
     | Saved comparison_suite_ER_k10.csv
@@ -44,15 +44,15 @@ git:  9e85f35  (master)
     |   RMSE(HMF, MC) = 0.3357 | RMSE(DMF, MC) = 0.3280 | winner: DMF
 
 ===== [monte_carlo_mc] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python mc.py (in monte_carlo) =====
-  -> OK in 3s  (log: logs/monte_carlo_mc.log)
+  -> OK in 2s  (log: logs/monte_carlo_mc.log)
     | ER graph: N=499, <k>~10, T=0.65
     |   eps=0.2:  m_psi=0.997
     |   eps=0.9:  m_psi=0.001
     | Saved mc_phase2_ER.png
 
 ===== [monte_carlo_compare] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python compare.py (in monte_carlo) =====
-  -> OK in 79s  (log: logs/monte_carlo_compare.log)
-    | MC sweep took 77.8s
+  -> OK in 77s  (log: logs/monte_carlo_compare.log)
+    | MC sweep took 75.5s
     | Saved mc_vs_hmf.png
     | Saved mc_vs_hmf.csv
 
@@ -74,6 +74,12 @@ git:  9e85f35  (master)
     | Saved phase_diagram_BA.csv
     | Done -> phase_diagram_BA.png
 
+===== [phase_diagram_boundary] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python critical_boundary.py (in phase_diagram) =====
+  -> OK in 0s  (log: logs/phase_diagram_boundary.log)
+    | Saved critical_boundary.png
+    | Saved /home/sedahoo/research/Projects/RPS_Potts_Recreation/phase_diagram/critical_boundary.csv
+    | max |eps_c(ER) - eps_c(BA)| = 0.040  (ER and BA boundaries coincide)
+
 ===== [dynamics_ternary] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python ternary.py (in dynamics) =====
   -> OK in 2s  (log: logs/dynamics_ternary.log)
     | Saved ternary.png
@@ -88,11 +94,11 @@ git:  9e85f35  (master)
     | Saved fss.png
 
 ===== [dynamics_stability] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python stability.py (in dynamics) =====
-  -> OK in 0s  (log: logs/dynamics_stability.log)
+  -> OK in 1s  (log: logs/dynamics_stability.log)
     | Saved stability.png
 
 ===== [zealots_experiment] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python experiment.py (in zealots) =====
-  -> OK in 3s  (log: logs/zealots_experiment.log)
+  -> OK in 2s  (log: logs/zealots_experiment.log)
     | Saved zealots.png
     | Saved zealots.csv
 
@@ -107,28 +113,36 @@ git:  9e85f35  (master)
     | Saved zealots_mixed.csv
 
 ===== [defects_experiment] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python experiment_defects.py (in defects) =====
-  -> OK in 8s  (log: logs/defects_experiment.log)
+  -> OK in 7s  (log: logs/defects_experiment.log)
     | Saved defects.png
     | Saved defects.csv
+
+===== [defects_collapse] /home/sedahoo/research/Projects/RPS_Potts_Recreation/.venv/bin/python collapse.py (in defects) =====
+  -> OK in 1s  (log: logs/defects_collapse.log)
+    | Saved defects_collapse.png
+    | Saved /home/sedahoo/research/Projects/RPS_Potts_Recreation/defects/defects_collapse.csv
+    | max |eps_c(edge) - eps_c(node)| at matched f = 0.014
 
 ########## DONE ##########
 manifest: logs/manifest.csv
   label                        status  seconds  started_iso                log
-  test_validate_engine         OK      4        2026-07-01T14:32:03+05:30  logs/test_validate_engine.log
-  mean_field_hmf               OK      1        2026-07-01T14:32:07+05:30  logs/mean_field_hmf.log
-  mean_field_sweep             OK      6        2026-07-01T14:32:08+05:30  logs/mean_field_sweep.log
-  mean_field_compare_suite_ER  OK      6        2026-07-01T14:32:14+05:30  logs/mean_field_compare_suite_ER.log
-  mean_field_compare_suite_BA  OK      6        2026-07-01T14:32:20+05:30  logs/mean_field_compare_suite_BA.log
-  monte_carlo_mc               OK      3        2026-07-01T14:32:26+05:30  logs/monte_carlo_mc.log
-  monte_carlo_compare          OK      79       2026-07-01T14:32:29+05:30  logs/monte_carlo_compare.log
-  phase_diagram_ER             OK      6        2026-07-01T14:33:48+05:30  logs/phase_diagram_ER.log
-  phase_diagram_BA             OK      6        2026-07-01T14:33:54+05:30  logs/phase_diagram_BA.log
-  dynamics_ternary             OK      2        2026-07-01T14:34:00+05:30  logs/dynamics_ternary.log
-  dynamics_fss                 OK      3        2026-07-01T14:34:02+05:30  logs/dynamics_fss.log
-  dynamics_stability           OK      0        2026-07-01T14:34:05+05:30  logs/dynamics_stability.log
-  zealots_experiment           OK      3        2026-07-01T14:34:05+05:30  logs/zealots_experiment.log
-  zealots_experiment_hubs      OK      4        2026-07-01T14:34:08+05:30  logs/zealots_experiment_hubs.log
-  zealots_experiment_mixed     OK      2        2026-07-01T14:34:12+05:30  logs/zealots_experiment_mixed.log
-  defects_experiment           OK      8        2026-07-01T14:34:14+05:30  logs/defects_experiment.log
+  test_validate_engine         OK      4        2026-07-02T08:59:11+05:30  logs/test_validate_engine.log
+  mean_field_hmf               OK      1        2026-07-02T08:59:15+05:30  logs/mean_field_hmf.log
+  mean_field_sweep             OK      7        2026-07-02T08:59:16+05:30  logs/mean_field_sweep.log
+  mean_field_compare_suite_ER  OK      5        2026-07-02T08:59:23+05:30  logs/mean_field_compare_suite_ER.log
+  mean_field_compare_suite_BA  OK      6        2026-07-02T08:59:28+05:30  logs/mean_field_compare_suite_BA.log
+  monte_carlo_mc               OK      2        2026-07-02T08:59:34+05:30  logs/monte_carlo_mc.log
+  monte_carlo_compare          OK      77       2026-07-02T08:59:36+05:30  logs/monte_carlo_compare.log
+  phase_diagram_ER             OK      6        2026-07-02T09:00:53+05:30  logs/phase_diagram_ER.log
+  phase_diagram_BA             OK      6        2026-07-02T09:00:59+05:30  logs/phase_diagram_BA.log
+  phase_diagram_boundary       OK      0        2026-07-02T09:01:05+05:30  logs/phase_diagram_boundary.log
+  dynamics_ternary             OK      2        2026-07-02T09:01:05+05:30  logs/dynamics_ternary.log
+  dynamics_fss                 OK      3        2026-07-02T09:01:07+05:30  logs/dynamics_fss.log
+  dynamics_stability           OK      1        2026-07-02T09:01:10+05:30  logs/dynamics_stability.log
+  zealots_experiment           OK      2        2026-07-02T09:01:11+05:30  logs/zealots_experiment.log
+  zealots_experiment_hubs      OK      4        2026-07-02T09:01:13+05:30  logs/zealots_experiment_hubs.log
+  zealots_experiment_mixed     OK      2        2026-07-02T09:01:17+05:30  logs/zealots_experiment_mixed.log
+  defects_experiment           OK      7        2026-07-02T09:01:19+05:30  logs/defects_experiment.log
+  defects_collapse             OK      1        2026-07-02T09:01:26+05:30  logs/defects_collapse.log
 
 All steps OK.

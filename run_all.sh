@@ -60,9 +60,10 @@ run "mean_field_compare_suite_BA"  "mean_field"  "$PY" compare_suite.py --graph 
 run "monte_carlo_mc"            "monte_carlo"    "$PY" mc.py
 run "monte_carlo_compare"       "monte_carlo"    "$PY" compare.py
 
-# --- 4. phase diagram (parallel <k> x eps sweep), ER and BA ---
+# --- 4. phase diagram (parallel <k> x eps sweep), ER and BA, + boundary extraction ---
 run "phase_diagram_ER"          "phase_diagram"  bash run.sh ER
 run "phase_diagram_BA"          "phase_diagram"  bash run.sh BA
+run "phase_diagram_boundary"    "phase_diagram"  "$PY" critical_boundary.py
 
 # --- 5. dynamics (ternary, finite-size scaling, fixed-point stability) ---
 run "dynamics_ternary"          "dynamics"       "$PY" ternary.py
@@ -74,8 +75,9 @@ run "zealots_experiment"        "zealots"        "$PY" experiment.py
 run "zealots_experiment_hubs"   "zealots"        "$PY" experiment_hubs.py
 run "zealots_experiment_mixed"  "zealots"        "$PY" experiment_mixed.py
 
-# --- 7. defects (edge/node quenched disorder) ---
+# --- 7. defects (edge/node quenched disorder) + collapse test ---
 run "defects_experiment"        "defects"        "$PY" experiment_defects.py
+run "defects_collapse"          "defects"        "$PY" collapse.py
 
 say ""
 say "########## DONE ##########"

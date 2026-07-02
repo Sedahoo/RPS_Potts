@@ -35,7 +35,9 @@ does higher connectivity `<k>` protect order against `eps`?
   up-right** (connectivity protects order), saturating near eps ~ 0.65; sparse
   rows (`<k>`<=4) cannot order at all.
 - **ER vs BA nearly identical** — for the MC, average degree matters, not the
-  degree-distribution shape.
+  degree-distribution shape. Quantified by `critical_boundary.py`:
+  max |eps_c(ER) − eps_c(BA)| = 0.040 over all 20 degrees, with the HMF
+  prediction sitting above the MC boundary at every k.
 
 ### Dynamics — `dynamics/FINDINGS.md`
 - **Ternary**: low eps spirals to a corner (consensus); high eps orbits the centre.
@@ -62,4 +64,6 @@ does higher connectivity `<k>` protect order against `eps`?
 4. **Defects erode order via effective `<k>`**: edge or node quenching slides the
    transition to lower eps (f=0 -> eps_c~0.63, f=0.8 -> ~0.22), and **edge and node
    defects coincide when matched by the resulting `<k>`** — "connectivity
-   stabilises order" run in reverse.
+   stabilises order" run in reverse. The collapse test (`collapse.py`) makes it
+   exact: all damaged-network (eps_c, <k>) points land on the pristine-ER
+   boundary curve; max edge-node gap 0.014.
