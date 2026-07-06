@@ -1,21 +1,45 @@
-# CLAUDE.md — RPS-Potts on Networks (recreation)
+# CLAUDE.md — RPS-Potts on Networks
 
-From-scratch rebuild of thesis "Project B" (hybrid Potts + Rock-Paper-Scissors on
-complex networks) + novel iteration experiments. Original repo lives at
-`../RPS_Potts_Network`.
+Cyclic dominance of a Potts (q=3) + Rock-Paper-Scissors model on complex
+networks: MC / HMF / DMF cross-validated, phase diagram, and perturbation
+experiments (zealots, hub targeting, competing factions, defects).
+
+Historical note: began as a from-scratch rebuild of thesis "Project B"
+(original repo at `../RPS_Potts_Network`), since extended with new analyses.
+Folder was renamed `RPS_Potts_Recreation` → `RPS_Potts`; the GitHub remote may
+still use the old name. Outward-facing deliverables (RESULTS_REPORT.pdf,
+PRESENTING.md) present the work as standalone research — do not reintroduce
+"recreation" framing there.
 
 ## Model
-Nodes play Rock/Paper/Scissors; payoff `P = I + eps*skew` (identity = order, skew
-= RPS cycle). Glauber updates at temperature `T`. Order parameter `m_psi` ~1
-ordered, ~0 cycling. Cycle: Paper>Rock, Scissors>Paper, Rock>Scissors. Key
-question: does connectivity `<k>` protect order against cyclic strength `eps`?
+Nodes play Rock/Paper/Scissors; payoff `P = I + eps*skew` (identity = order,
+skew = RPS cycle). Glauber updates at `T=0.65`. Order parameter `m_psi` ~1
+ordered/consensus, ~0 cycling. Cycle: Paper>Rock, Scissors>Paper,
+Rock>Scissors. eps_c quoted at the (interpolated) `m_psi=0.5` crossing. Key
+result: order stability is a function of `<k>` alone (ER≈BA, damaged≈pristine
+at matched `<k>`).
 
 ## Layout (folders named by topic)
 - `drivers/`  — the single C++ engine `mc_engine` (plain MC + optional zealots).
 - `common/`   — shared Python: graphs, observables, meanfield (HMF+DMF), mc_python, runner, io.
-- `mean_field/`, `monte_carlo/`, `phase_diagram/`, `dynamics/` — recreation (reproduces the thesis).
-- `zealots/`, `defects/` — novel iteration experiments.
-- `WALKTHROUGH.md` — the build-order learning path. `FINDINGS.md` (root + per folder) — results.
+- `mean_field/`, `monte_carlo/`, `phase_diagram/`, `dynamics/` — core physics.
+  Synthesis analyses: `phase_diagram/critical_boundary.py` (eps_c(<k>) ER vs BA
+  vs HMF), `defects/collapse.py` (damaged networks land on the pristine boundary).
+- `zealots/`, `defects/` — perturbation experiments.
+- `WALKTHROUGH.md` — build-order learning path. `FINDINGS.md` (root + per folder) — results narrative.
+
+## Reproduction & deliverables
+- `./run_all.sh` — the one command: rebuilds the engine, runs the validation
+  test, then all 18 steps; per-step logs + `logs/manifest.csv`. Deterministic
+  seeds: every figure/CSV must regenerate **byte-for-byte identical** (check
+  with `git status` after a run — only `logs/` should change).
+- `build_report.py` — generates `RESULTS_REPORT.pdf` (pdflatex). **Every number
+  in the report is computed from the CSVs / logs at build time — never
+  hardcode results, step counts, dates, or speedups in the LaTeX.** Each result
+  section follows the pattern: *What it is* → *Parameters* (gray block) →
+  data table + figure → *Conclusion*. Rebuild the report after any data change.
+- `RUN_REPORT.md` — written run summary; `PRESENTING.md` — meeting script for
+  the professor (what to show, what to say, likely Q&A, the HPC ask).
 
 ## Conventions / gotchas
 - Python runs in the project venv. Use `$(cd .venv/bin && pwd)/python` — NOT
@@ -25,6 +49,8 @@ question: does connectivity `<k>` protect order against cyclic strength `eps`?
   `from common import ...`, so they work regardless of folder name.
 - `phase_diagram/run.sh` uses GNU parallel if present, else `xargs -P`.
 - Every experiment script saves a `.png` figure AND a `.csv` of the underlying
-  data next to it.
+  data next to it; the report reads only the CSVs.
+- Engine defaults (via `common/runner.py`): T=0.65, 1500 sweeps, burn-in =
+  0.3×sweeps, seed 1.
 - Commit messages end with the Co-Authored-By trailer; never commit binaries
-  (`drivers/mc_engine`) or `.venv` (see `.gitignore`).
+  (`drivers/mc_engine`), `.venv`, or `report.tex`/aux files (see `.gitignore`).
