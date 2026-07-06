@@ -54,6 +54,7 @@ w(r"""\documentclass[10pt]{article}
 \renewcommand{\arraystretch}{1.12}
 \newcommand{\epsc}{$\varepsilon_c$}
 \newcommand{\mpsi}{$m_\psi$}
+\newcommand{\params}[1]{\par\vspace{2pt}\noindent{\small\textcolor{gray}{\textbf{Parameters.} #1}}\par\vspace{2pt}}
 \begin{document}
 \begin{center}
 {\Large\bfseries Cyclic dominance of a Potts--RPS model on complex networks}\\[2pt]
@@ -142,6 +143,9 @@ w(r"\textit{What it is.} A correctness cross-check: the same graph is evolved by
   r"the last digit. This licenses using the C++ engine for everything below.")
 w(r"Same graph through both engines; independent RNG streams, so agreement is in "
   r"phase not last digit (log: \texttt{test\_validate\_engine.log}).")
+w(r"\params{ER graph: $N{=}500$, $\langle k\rangle{=}10$, graph seed 42. Both engines: "
+  r"$T{=}0.65$, 1500 sweeps, MC seed 7, burn-in 30\% (Python: first 30\% of the series "
+  r"discarded; C++: 450 sweeps). $\varepsilon\in\{0.2,\,0.5,\,0.7,\,0.9\}$.}")
 # parse the validation log from this run
 import re
 vlog = open(os.path.join(HERE, "logs/test_validate_engine.log")).read()
@@ -172,6 +176,9 @@ w(r"\textit{What it is.} The homogeneous mean field replaces the network by thre
   r"cyclic-dominance strength $\varepsilon$ at several $\langle k\rangle$, recording "
   r"$m_\psi$. It is the cheapest probe of the order$\to$cycling transition and how the "
   r"critical point \epsc{} depends on connectivity.")
+w(r"\params{HMF map iterated 4000 steps from $(r,p,s)_0=(0.40,0.35,0.25)$, $T{=}0.65$; "
+  r"\mpsi{} measured over the last 50\% of the trajectory. $\varepsilon$: 51 points on "
+  r"$[0,1]$; $\langle k\rangle\in\{2,5,10,50,200\}$; \epsc{} at the $m_\psi{=}0.5$ crossing.}")
 w(r"\begin{minipage}[t]{0.46\textwidth}\vspace{0pt}")
 w(r"\begin{tabular}{lcccc c}\toprule")
 w(r"$\langle k\rangle$ & " + " & ".join(k[1:] for k in ks) + r"\\")
@@ -192,6 +199,10 @@ w(r"\textit{What it is.} A three-way accuracy test. We compute $m_\psi(\varepsil
   r"field by its root-mean-square error against MC across the sweep. The question: does "
   r"resolving the degree distribution (DMF) buy accuracy, and does that gain grow on a "
   r"heterogeneous BA graph with hubs?")
+w(r"\params{One graph per type (ER, BA): $N{=}800$, target $\langle k\rangle{=}10$, graph "
+  r"seed 1. MC: C++ engine, $T{=}0.65$, 1500 sweeps (burn-in 450), seed 1. HMF: "
+  r"$k=$ measured $\langle k\rangle$ of that graph; DMF: measured $P(k)$; both iterated "
+  r"4000 steps. $\varepsilon$: 26 points on $[0,1]$; RMSE over all 26 points.}")
 rows = []
 for g in ["ER", "BA"]:
     d = load(f"mean_field/comparison_suite_{g}_k10.csv")
@@ -217,6 +228,9 @@ w(r"\subsection*{3.3\quad Direct MC vs HMF overlay (ER, $\langle k\rangle{=}10$)
 w(r"\textit{What it is.} A head-to-head on a single ER graph: the MC transition curve "
   r"overlaid on the HMF prediction, to see exactly where and by how much the mean-field "
   r"approximation misplaces the critical point on a finite network.")
+w(r"\params{ER: $N{=}500$, $\langle k\rangle{=}10$, graph seed 1. MC: pure-Python "
+  r"reference, $T{=}0.65$, 1200 sweeps, burn-in 30\%, averaged over seeds $\{1,2,3\}$. "
+  r"HMF: $k{=}10$, 4000 steps. $\varepsilon$: 26 points on $[0,1]$.}")
 w(r"\begin{minipage}[t]{0.44\textwidth}\vspace{0pt}")
 w(r"\begin{tabular}{lc}\toprule model & \epsc{}\\\midrule")
 w(rf"MC (ground truth) & {f2(epsc(d['epsilon'], d['mc']))}\\")
@@ -236,6 +250,9 @@ w(r"\textit{What it is.} The central result of the study. For each mean degree w
   r"average degree or by the shape of $P(k)$.")
 w(r"520 simulations per graph (20 degrees $\times$ 26 $\varepsilon$), $N{=}800$, fanned "
   r"across 16 cores in $\sim$6\,s each.")
+w(r"\params{$N{=}800$; $\langle k\rangle=2,4,\dots,40$ (20 values, one graph per degree, "
+  r"graph seed 1); $\varepsilon$: 26 points on $[0,1]$; $T{=}0.65$; 800 sweeps, burn-in "
+  r"240; engine seed 1; $20\times26=520$ runs per graph type, for ER and BA.}")
 per = {}
 for g in ["ER", "BA"]:
     d = load(f"phase_diagram/phase_diagram_{g}.csv")
@@ -263,6 +280,10 @@ w(r"\textit{What it is.} The boundary pulled out of both heatmaps as a curve "
   r"Sec.~3.1 overlaid. One figure carries three claims: the boundary rises with "
   r"$\langle k\rangle$ (connectivity stabilises order), ER and BA coincide, and the "
   r"mean field sits above the MC everywhere (overestimates order).")
+w(r"\params{No new simulations: computed from \texttt{phase\_diagram\_\{ER,BA\}.csv} "
+  r"(Sec.~4) and \texttt{hmf\_sweep.csv} (Sec.~3.1); \epsc{} by linear interpolation of "
+  r"the $m_\psi{=}0.5$ crossing; HMF curve clipped to the MC degree range "
+  r"$\langle k\rangle\le40$.}")
 w(r"\begin{minipage}[t]{0.42\textwidth}\vspace{0pt}")
 w(rf"\begin{{tabular}}{{lc}}\toprule quantity & value\\\midrule "
   rf"$\max_k |\varepsilon_c^{{ER}}-\varepsilon_c^{{BA}}|$ & \textbf{{{gap:.3f}}}\\ "
@@ -283,6 +304,12 @@ w(r"\textit{What it is.} Three views that confirm the transition is a real phase
   r"composition simplex --- a fixed corner means consensus, a closed orbit means the "
   r"endless RPS chase. \textbf{Stability:} classify the mean-field fixed points "
   r"(consensus vs limit cycle) on either side of \epsc{}.")
+w(r"\params{FSS: ER, $\langle k\rangle{=}10$, $N\in\{200,500,1000,2000\}$ (graph seed 1 "
+  r"each); $\varepsilon$: 21 points on $[0.35,0.75]$; engine, $T{=}0.65$, 1200 sweeps "
+  r"(burn-in 360), seed 1. Ternary: ER, $N{=}500$, $\langle k\rangle{=}10$, graph seed 1; "
+  r"Python MC, 1200 sweeps, MC seed 3; $\varepsilon\in\{0.2,\,0.95\}$. Stability: HMF, "
+  r"$k{=}10$, $T{=}0.65$, 600 steps, init $(1/3{+}\delta,\,1/3,\,1/3{-}\delta)$ with "
+  r"$\delta{=}0.02$; $\varepsilon\in\{0.2,\,0.5,\,0.7,\,0.95\}$.}")
 fss = load("dynamics/fss.csv")
 Ns = [c for c in fss.dtype.names if c != "epsilon"]
 w(r"\begin{table}[H]\centering\small\begin{tabular}{lcccc}\toprule")
@@ -319,6 +346,10 @@ w(r"\textit{What it is.} A fraction $z$ of nodes are turned into \emph{zealots} 
   r"nodes end up playing Rock) and the global order $m_\psi$. The classic question of "
   r"whether a committed minority can drive consensus --- but asked in a cyclic system, "
   r"where pushing Rock also feeds Rock's predator.")
+w(r"\params{ER: $N{=}800$, $\langle k\rangle{=}10$; 12 graphs (seeds 1--12), curves "
+  r"seed-averaged. Zealots: strategy Rock, random placement; $z$: 17 points on "
+  r"$[0,0.20]$. Engine: $T{=}0.65$, 1500 sweeps (burn-in 450). $\varepsilon{=}0.3$ "
+  r"(ordering panel) and $0.9$ (cycling panel).}")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$z$ & conv$_{\text{ord}}$ & \mpsi$_{\text{ord}}$ & conv$_{\text{cyc}}$ & \mpsi$_{\text{cyc}}$\\\midrule")
@@ -349,6 +380,10 @@ w(r"\textit{What it is.} The same Rock-zealots, but now we compare \emph{where} 
   r"raw structural targeting amplifies a minority's reach --- and whether that extra "
   r"reach lets it dictate \emph{which} strategy wins, or merely \emph{whether} the "
   r"network orders at all.")
+w(r"\params{BA: $N{=}800$, $\langle k\rangle{=}10$; 15 graphs (seeds 1--15), curves "
+  r"seed-averaged. Rock-zealots, placement $\in$ \{random, top-degree hubs\}; $z$: 16 "
+  r"points on $[0,0.10]$. Engine: $T{=}0.65$, 1500 sweeps (burn-in 450). "
+  r"$\varepsilon\in\{0.3,\,0.9\}$.}")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$z$ & \mpsi$^{\text{rand}}_{\text{cyc}}$ & \mpsi$^{\text{hub}}_{\text{cyc}}$ "
@@ -378,6 +413,10 @@ w(r"\textit{What it is.} Two opposing zealot factions of equal size $z$ --- one 
   r"population $(\rho_{\text{rock}},\rho_{\text{paper}},\rho_{\text{sciss}})$. In a cyclic "
   r"game the naive guess is that the two cancel and the third strategy (Scissors, which "
   r"beats Paper) profits; this experiment checks whether that actually happens.")
+w(r"\params{ER: $N{=}800$, $\langle k\rangle{=}10$; 12 graphs (seeds 1--12), curves "
+  r"seed-averaged. Factions: Rock and Paper, each of fraction $z$ (total $2z$), random "
+  r"placement; $z$: 16 points on $[0,0.10]$. Engine: $T{=}0.65$, 1500 sweeps (burn-in "
+  r"450). $\varepsilon\in\{0.3,\,0.9\}$. $\rho$ columns include the zealots themselves.}")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lccc}\toprule")
 w(r"$z$ (each) & $\rho_{\text{rock}}$ & $\rho_{\text{paper}}$ & $\rho_{\text{sciss}}$"
@@ -408,6 +447,11 @@ w(r"\textit{What it is.} Instead of adding agents we \emph{damage} the network: 
   r"connectivity stabilises order, quenched disorder should erode it --- and comparing "
   r"the two damage types (matched by the mean degree they leave behind) tests whether "
   r"only the effective $\langle k\rangle$ matters.")
+w(r"\params{ER before damage: $N{=}1000$, $\langle k\rangle{=}20$; 6 graphs (seeds "
+  r"1--6), curves seed-averaged. Damage: remove fraction $f\in\{0,\,0.3,\,0.6,\,0.8\}$ "
+  r"of edges, or of nodes, uniformly at random (same seed as the graph). $\varepsilon$: "
+  r"26 points on $[0,1]$; engine, $T{=}0.65$, 1000 sweeps (burn-in 300), seed $=$ graph "
+  r"seed.}")
 fr = sorted(set(d["f"]))
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
@@ -438,6 +482,10 @@ w(r"\textit{What it is.} The decisive check on Sec.~6.4: each damaged network "
   r"contributes one point (resulting $\langle k\rangle$, \epsc{}), plotted over the "
   r"\emph{pristine}-ER boundary extracted in Sec.~4.1. If damage only matters through "
   r"the mean degree it leaves behind, every point must land on the pristine curve.")
+w(r"\params{No new simulations: computed from \texttt{defects.csv} (Sec.~6.4, $N{=}1000$ "
+  r"damaged graphs) and \texttt{phase\_diagram\_ER.csv} (Sec.~4, $N{=}800$ pristine "
+  r"graphs); \epsc{} by linear interpolation of the $m_\psi{=}0.5$ crossing for both "
+  r"data sets.}")
 w(r"\begin{minipage}[t]{0.42\textwidth}\vspace{0pt}")
 w(rf"\begin{{tabular}}{{lc}}\toprule quantity & value\\\midrule "
   rf"$\max_f |\varepsilon_c^{{edge}}-\varepsilon_c^{{node}}|$ & \textbf{{{dev:.3f}}}\\ "
