@@ -17,11 +17,22 @@ def load(p):
 
 
 def epsc(e, m, thr=0.5):
-    """First epsilon where m drops below thr (order->cycling)."""
+    """Interpolated epsilon where m first crosses below thr (order->cycling).
+
+    Same estimator as phase_diagram/critical_boundary.py (pipeline step P6 in
+    the report): sort by epsilon, find the first grid point with m < thr,
+    linearly interpolate between the bracketing points.
+    """
     e = np.asarray(e); m = np.asarray(m)
     o = np.argsort(e); e, m = e[o], m[o]
     idx = np.where(m < thr)[0]
-    return float(e[idx[0]]) if len(idx) else float(e[-1])
+    if len(idx) == 0:
+        return float(e[-1])
+    i = idx[0]
+    if i == 0:
+        return float(e[0])
+    e0, e1, m0, m1 = e[i - 1], e[i], m[i - 1], m[i]
+    return float(e0 + (thr - m0) * (e1 - e0) / (m1 - m0))
 
 
 def rmse(a, b):
@@ -54,7 +65,13 @@ w(r"""\documentclass[10pt]{article}
 \renewcommand{\arraystretch}{1.12}
 \newcommand{\epsc}{$\varepsilon_c$}
 \newcommand{\mpsi}{$m_\psi$}
-\newcommand{\params}[1]{\par\vspace{2pt}\noindent{\small\textcolor{gray}{\textbf{Parameters.} #1}}\par\vspace{2pt}}
+\newenvironment{paramlist}{\par\vspace{2pt}\noindent\small\color{gray}\textbf{Parameters --- each defined.}
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}\setlength{\topsep}{1pt}}
+{\end{itemize}\par\vspace{2pt}}
+\newcommand{\howobt}[1]{\par\vspace{2pt}\noindent{\small{\color{hl}\textbf{How the numbers are obtained.}} {\small #1}}\par\vspace{2pt}}
+\definecolor{hy}{RGB}{128,50,128}
+\newcommand{\hyp}[1]{\par\vspace{2pt}\noindent{\small{\color{hy}\textbf{Hypothesis --- stated before running.}} {\small #1}}\par\vspace{2pt}}
+\newcommand{\vrdct}[1]{\par\vspace{2pt}\noindent{\small{\color{ok}\textbf{Verdict vs hypothesis.}} {\small #1}}\par\vspace{2pt}}
 \begin{document}
 \begin{center}
 {\Large\bfseries Cyclic dominance of a Potts--RPS model on complex networks}\\[2pt]
@@ -89,8 +106,8 @@ $N$, $\langle k\rangle$, $P(k)$ & number of nodes; average degree; degree distri
 \multicolumn{2}{l}{\textbf{Observables}}\\\midrule
 $(r,p,s)$ & global fractions of the population playing Rock, Paper, Scissors\\
 $\psi$ & $r+p\,e^{i2\pi/3}+s\,e^{i4\pi/3}$: complex sum of the three fractions; large $|\psi|$ $\Leftrightarrow$ one strategy dominates\\
-\mpsi & $\lvert\langle\psi\rangle_t\rvert$, the time-averaged order parameter: $\to\!1$ consensus (\emph{ordered phase}), $\to\!0$ when strategies chase each other (\emph{cycling phase})\\
-\epsc & critical cyclic strength where order gives way to cycling; quoted at the interpolated $m_\psi{=}0.5$ crossing throughout\\
+\mpsi & $\lvert\langle\psi\rangle_t\rvert$, the time-averaged order parameter: $\to\!1$ consensus (\emph{ordered phase}), $\to\!0$ when strategies chase each other (\emph{cycling phase}); computed by pipeline steps P2--P4 of Sec.~0.1\\
+\epsc & critical cyclic strength where order gives way to cycling; quoted at the interpolated $m_\psi{=}0.5$ crossing throughout (pipeline step P6)\\
 conversion & fraction of \emph{free} (non-zealot) nodes playing the zealots' strategy\\\midrule
 \multicolumn{2}{l}{\textbf{Methods}}\\\midrule
 MC & Monte Carlo: stochastic agent-level simulation on the actual graph --- the ground truth\\
@@ -105,6 +122,94 @@ effective $\langle k\rangle$ & the mean degree of the network \emph{after} damag
 fixed point / limit cycle & steady state vs closed periodic orbit of the mean-field dynamics; the ternary \emph{simplex} is the triangle of all $(r,p,s)$ compositions, corners $=$ pure strategies\\
 \bottomrule
 \end{longtable}}
+
+\subsection*{0.1\quad How every number is obtained --- the measurement pipeline}
+Every $m_\psi$, strategy fraction and \epsc{} in this report is produced by one
+fixed chain from raw strategies to the printed digit. The steps are numbered
+(P1--P6) so each result section below can state exactly which it uses.
+
+\textbf{(P1) Dynamics generate the microstate.} Nodes start from uniformly
+random strategies. Each sweep makes $N$ single-node update attempts: pick a
+random node $i$, propose one of the two other strategies $s'$, compute the
+utility change against $i$'s neighbours only,
+$\Delta U=\sum_{j\in\partial i}\big[P_{s'\,s_j}-P_{s_i\,s_j}\big]$ with
+$P=I+\varepsilon\,\mathrm{skew}$, and accept with the Glauber probability
+$1/(1+e^{-\Delta U/T})$. Zealots are skipped (they never update) but still
+appear in their neighbours' $\Delta U$. This runs for the stated number of
+sweeps; the first \emph{burn-in} sweeps are discarded unmeasured (default
+30\%).
+
+\textbf{(P2) Count the three strategy clusters.} At the end of every
+post-burn-in sweep the engine counts the population of each strategy cluster
+--- $N_R(t)$, $N_P(t)$, $N_S(t)$, the number of nodes currently playing Rock,
+Paper, Scissors --- and normalises to fractions
+$r(t)=N_R(t)/N$, $p(t)=N_P(t)/N$, $s(t)=N_S(t)/N$, with $r+p+s=1$. These three
+time series are the \emph{only} raw measurement; everything below is computed
+from them.
+
+\textbf{(P3) Map the fractions to one complex number.} The three strategies
+are assigned unit vectors $120^\circ$ apart in the complex plane, and the
+fractions are summed along them:
+\[
+\psi(t)=r(t)+p(t)\,e^{i2\pi/3}+s(t)\,e^{i4\pi/3}
+=\underbrace{\textstyle r-\frac{1}{2}(p+s)}_{\mathrm{Re}\,\psi}
+\;+\;i\,\underbrace{\textstyle\frac{\sqrt3}{2}(p-s)}_{\mathrm{Im}\,\psi}.
+\]
+Geometry does the classification: if one cluster dominates, $\psi$ sits near
+that strategy's corner and $|\psi|\to1$; the symmetric mix $r=p=s=\tfrac13$
+gives $\psi=0$; and RPS cycling makes $\psi(t)$ \emph{rotate} around the
+origin at roughly constant radius.
+
+\textbf{(P4) Time-average, then take the modulus.} The order parameter is
+\[
+m_\psi=\Big|\;\frac{1}{M}\sum_{t>t_{\mathrm{burn}}}\psi(t)\;\Big|
+\]
+over the $M$ measurement sweeps. The order of operations is the whole trick:
+averaging the \emph{vector} first means a rotating $\psi$ cancels itself and
+cycling scores $m_\psi\approx0$, while static consensus keeps
+$m_\psi\approx1$. (Taking $|\psi(t)|$ first would score both phases high.)
+The identical estimator is implemented in \texttt{common/observables.py}
+(Python MC, HMF, DMF) and \texttt{drivers/mc\_engine.cpp} (C++).
+
+\textbf{(P5) Average over seeds.} Where a section says ``$n$ seeds'', steps
+P1--P4 are repeated on $n$ independent graph realisations (graph seed $=$ RNG
+seed $=1\dots n$) and the resulting curves are averaged point-by-point; tables
+show the seed-averaged values.
+
+\textbf{(P6) Extract \epsc{} by interpolation.} A transition point is read off
+a sweep $m_\psi(\varepsilon)$ by sorting in $\varepsilon$, finding the first
+grid point with $m_\psi<0.5$, and linearly interpolating between the two
+bracketing points: $\varepsilon_c=\varepsilon_0+(0.5-m_0)\,
+(\varepsilon_1-\varepsilon_0)/(m_1-m_0)$. If the curve never drops below 0.5
+the last grid point is reported. One convention everywhere
+(\texttt{phase\_diagram/critical\_boundary.py}; this report's tables use the
+same function).
+
+\textbf{Derived quantities} (each computed inside the same P2--P5 measurement
+window):
+\emph{conversion} $=$ per-sweep (free nodes playing the zealot strategy)
+$/$ (all free nodes), time- then seed-averaged --- zealots are excluded from
+numerator \emph{and} denominator, so it measures genuine influence;
+\emph{$\rho_x$} $=$ time-averaged global fraction of cluster $x$ (zealots
+included, i.e.\ P2 averaged);
+\emph{RMSE} $=\sqrt{\smash[b]{\tfrac1n\sum_j\big(m^{\mathrm{MF}}_j-
+m^{\mathrm{MC}}_j\big)^2}}$ over the $n$ points of the $\varepsilon$ grid;
+\emph{effective $\langle k\rangle$} $=2E'/N'$ of a damaged graph (surviving
+edges $E'$, surviving nodes $N'$), averaged over damage realisations;
+\emph{max$|$slope$|$} $=\max_j|m_{j+1}-m_j|/(\varepsilon_{j+1}-\varepsilon_j)$,
+the discrete steepness of a transition curve.
+
+\textbf{Robustness protocol.} Each results section below ends with one or more
+\emph{Robustness} subsections that audit the parameters that section holds
+fixed. Every such experiment follows the same discipline: identify the fixed
+parameters, state a falsifiable hypothesis (mechanism, which metrics should
+move, which should not) \emph{before} running, sweep the parameter over a
+grid, then confront the data with the hypothesis --- including the cases where
+a parameter is expected \emph{not} to matter, which are tested, not assumed.
+The pre-registered hypotheses are in \texttt{sensitivity/HYPOTHESES.md}, the
+full analysis in \texttt{sensitivity/FINDINGS.md}; every number in these
+subsections is computed at build time from the \texttt{sensitivity/*.csv}
+tables, through the same pipeline P1--P6.
 """)
 
 # ============================================================ 1. RUN MANIFEST
@@ -143,9 +248,27 @@ w(r"\textit{What it is.} A correctness cross-check: the same graph is evolved by
   r"the last digit. This licenses using the C++ engine for everything below.")
 w(r"Same graph through both engines; independent RNG streams, so agreement is in "
   r"phase not last digit (log: \texttt{test\_validate\_engine.log}).")
-w(r"\params{ER graph: $N{=}500$, $\langle k\rangle{=}10$, graph seed 42. Both engines: "
-  r"$T{=}0.65$, 1500 sweeps, MC seed 7, burn-in 30\% (Python: first 30\% of the series "
-  r"discarded; C++: 450 sweeps). $\varepsilon\in\{0.2,\,0.5,\,0.7,\,0.9\}$.}")
+w(r"\begin{paramlist}")
+w(r"\item $N{=}500$ --- number of nodes (system size).")
+w(r"\item $\langle k\rangle{=}10$ --- target average degree: the mean number of "
+  r"neighbours per node the ER construction aims for.")
+w(r"\item graph seed $=42$ --- RNG seed of the graph construction; fixes the one ER "
+  r"realisation that both engines share.")
+w(r"\item $T{=}0.65$ --- Glauber temperature: the noise scale in the acceptance "
+  r"probability $1/(1+e^{-\Delta U/T})$; higher $T$ $=$ more random flips.")
+w(r"\item sweeps $=1500$ --- simulation length; one sweep $=$ $N$ attempted "
+  r"single-node updates (the MC time unit).")
+w(r"\item burn-in $=30\%$ --- initial transient discarded before measuring "
+  r"(Python: first 30\% of the recorded series; C++: the first 450 sweeps).")
+w(r"\item MC seed $=7$ --- RNG seed of the update dynamics; the two engines use "
+  r"different RNG algorithms, so their random streams are independent even at equal seed.")
+w(r"\item $\varepsilon\in\{0.2,\,0.5,\,0.7,\,0.9\}$ --- cyclic-dominance strengths "
+  r"probed: two expected in the ordered phase, two in the cycling phase.")
+w(r"\end{paramlist}")
+w(r"\howobt{Each \mpsi{} cell is a single run through pipeline P1--P4 (no seed "
+  r"averaging). The verdict is \emph{agree} iff both engines land on the same side "
+  r"of $m_\psi=0.5$, i.e.\ classify the same phase; the speedup is the ratio of the "
+  r"two total wall-clock times parsed from the validation log.}")
 # parse the validation log from this run
 import re
 vlog = open(os.path.join(HERE, "logs/test_validate_engine.log")).read()
@@ -163,6 +286,59 @@ w(rf"\caption{{Engine agrees in every regime; measured speedup "
   rf"\textbf{{{float(spd):.0f}$\times$}} (Python {tpy}\,s vs C++ {tcpp}\,s for the "
   r"4-point sweep; timing varies run-to-run, the \mpsi{} values do not).}\end{table}")
 
+# 2.1 robustness: validation across N x eps x seed
+sv = load("sensitivity/sens_validation.csv")
+sv_ns = sorted(set(int(n) for n in sv["N"]))
+sv_eps = sorted(set(round(float(e), 4) for e in sv["epsilon"]))
+sv_seeds = sorted(set(int(s) for s in sv["seed"]))
+sv_gap = np.abs(sv["m_py"] - sv["m_cpp"])
+sv_agree = int(np.sum((sv["m_py"] > 0.5) == (sv["m_cpp"] > 0.5)))
+w(r"\subsection*{2.1\quad Robustness: does the agreement hold across the parameter space?}")
+w(rf"\textit{{What it is.}} The table above is 4 $\varepsilon$ values on one graph with "
+  rf"one seed pair. Here the same paired comparison (identical graph and seed number "
+  rf"through both engines) is repeated over a grid of {len(sv)} pairs: "
+  rf"$N\times\varepsilon\times$seed.")
+w(r"\hyp{The two engines implement the same stochastic process with independent RNG "
+  r"streams, so they must agree in \emph{distribution}, not per run: same "
+  r"side-of-$0.5$ verdicts everywhere except possibly where $m_\psi\approx0.5$ "
+  r"(inside the narrow transition window); $|m_{py}-m_{cpp}|$ should peak near the "
+  r"transition and shrink as $1/\sqrt{N}$ (self-averaging of a global average). A "
+  r"systematic offset at any point away from the transition would indicate an "
+  r"implementation difference, not noise.}")
+w(r"\begin{paramlist}")
+w(rf"\item $N\in\{{{','.join(str(n) for n in sv_ns)}\}}$ --- system sizes; tests the "
+  r"predicted $1/\sqrt{N}$ shrinkage of the engine-to-engine gap.")
+w(rf"\item $\varepsilon\in\{{{','.join(f'{e:g}' for e in sv_eps)}\}}$ --- spans deep "
+  r"order, the transition neighbourhood and deep cycling at $\langle k\rangle{=}10$.")
+w(rf"\item seeds $\in\{{{','.join(str(s) for s in sv_seeds)}\}}$ --- both the "
+  r"pure-Python and the C++ run use the same seed number but independent RNG "
+  r"algorithms, so per-pair equality is not expected --- only statistical agreement.")
+w(r"\item $\langle k\rangle{=}10$, $T{=}0.65$, 1500 sweeps, burn-in 30\%, graph seed "
+  r"42 --- identical to Sec.~2, so the grid extends the headline validation rather "
+  r"than replacing it.")
+w(r"\end{paramlist}")
+w(r"\howobt{Each pair is one P1--P4 run per engine on the same edge list; the verdict "
+  r"criterion and $|m_{py}-m_{cpp}|$ are computed per pair, then summarised per $N$. "
+  r"Data: \texttt{sensitivity/sens\_validation.csv}.}")
+w(r"\begin{minipage}[t]{0.40\textwidth}\vspace{0pt}")
+w(r"\begin{tabular}{lcc}\toprule $N$ & max $|\Delta m_\psi|$ & mean $|\Delta m_\psi|$\\\midrule")
+for n in sv_ns:
+    sel = sv["N"] == n
+    w(rf"{n} & {sv_gap[sel].max():.4f} & {sv_gap[sel].mean():.4f}\\")
+w(r"\bottomrule\end{tabular}\\[4pt]")
+w(rf"\small Verdicts: \textbf{{{sv_agree}/{len(sv)}}} pairs classify the same phase. "
+  r"The predicted transition-window disagreements never materialised because no test "
+  r"point landed inside the (narrower than expected) window.\end{minipage}\hfill")
+w(r"\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\centering")
+w(r"\includegraphics[width=\linewidth]{sensitivity/sens_validation.png}\end{minipage}")
+sv_maxes = " / ".join(f"{sv_gap[sv['N'] == n].max():.4f}" for n in sv_ns)
+w(rf"\vrdct{{Confirmed, and stronger than hypothesised: {sv_agree}/{len(sv)} verdicts "
+  rf"agree, the maximum gap is {sv_gap.max():.4f}, and the per-$N$ maxima fall "
+  rf"monotonically with $N$ ({sv_maxes}) "
+  r"--- the $1/\sqrt{N}$ self-averaging signature. No systematic offset anywhere: the "
+  r"C++ engine is the same physics as the reference, across the space actually used "
+  r"in this report, not just at the 4 showcase points.}")
+
 # ============================================================ 3. MEAN FIELD / MC
 w(r"\section*{3.\quad Mean field and Monte Carlo}")
 
@@ -176,9 +352,26 @@ w(r"\textit{What it is.} The homogeneous mean field replaces the network by thre
   r"cyclic-dominance strength $\varepsilon$ at several $\langle k\rangle$, recording "
   r"$m_\psi$. It is the cheapest probe of the order$\to$cycling transition and how the "
   r"critical point \epsc{} depends on connectivity.")
-w(r"\params{HMF map iterated 4000 steps from $(r,p,s)_0=(0.40,0.35,0.25)$, $T{=}0.65$; "
-  r"\mpsi{} measured over the last 50\% of the trajectory. $\varepsilon$: 51 points on "
-  r"$[0,1]$; $\langle k\rangle\in\{2,5,10,50,200\}$; \epsc{} at the $m_\psi{=}0.5$ crossing.}")
+w(r"\begin{paramlist}")
+w(r"\item steps $=4000$ --- iterations of the deterministic HMF recursion (its "
+  r"time axis, replacing MC sweeps).")
+w(r"\item $(r,p,s)_0=(0.40,0.35,0.25)$ --- initial composition of the population; "
+  r"deliberately asymmetric so the dynamics is not stuck on the unstable symmetric "
+  r"point $(\frac13,\frac13,\frac13)$.")
+w(r"\item $T{=}0.65$ --- Glauber temperature entering the mean-field transition rates.")
+w(r"\item measurement window $=$ last 50\% --- the part of the trajectory that P4 "
+  r"averages into \mpsi{} (the first half is the burn-in of the map).")
+w(r"\item $\varepsilon$: 51 points on $[0,1]$ --- resolution of the control-parameter "
+  r"grid (spacing 0.02).")
+w(r"\item $\langle k\rangle\in\{2,5,10,50,200\}$ --- mean degree multiplying the "
+  r"utilities; the \emph{only} place network structure enters the HMF.")
+w(r"\item \epsc{} --- interpolated $m_\psi{=}0.5$ crossing of each column (P6).")
+w(r"\end{paramlist}")
+w(r"\howobt{P1 is replaced by the deterministic HMF map (every node feels the mean "
+  r"mix, so the $(r,p,s)$ update is a closed 3-variable recursion); each iterate "
+  r"\emph{is} the global fraction vector, so P2 is trivial. \mpsi{} then follows "
+  r"P3--P4 over the last 50\% of the 4000-step trajectory, and each \epsc{} in the "
+  r"table applies P6 to that column's 51-point $m_\psi(\varepsilon)$ curve.}")
 w(r"\begin{minipage}[t]{0.46\textwidth}\vspace{0pt}")
 w(r"\begin{tabular}{lcccc c}\toprule")
 w(r"$\langle k\rangle$ & " + " & ".join(k[1:] for k in ks) + r"\\")
@@ -199,10 +392,26 @@ w(r"\textit{What it is.} A three-way accuracy test. We compute $m_\psi(\varepsil
   r"field by its root-mean-square error against MC across the sweep. The question: does "
   r"resolving the degree distribution (DMF) buy accuracy, and does that gain grow on a "
   r"heterogeneous BA graph with hubs?")
-w(r"\params{One graph per type (ER, BA): $N{=}800$, target $\langle k\rangle{=}10$, graph "
-  r"seed 1. MC: C++ engine, $T{=}0.65$, 1500 sweeps (burn-in 450), seed 1. HMF: "
-  r"$k=$ measured $\langle k\rangle$ of that graph; DMF: measured $P(k)$; both iterated "
-  r"4000 steps. $\varepsilon$: 26 points on $[0,1]$; RMSE over all 26 points.}")
+w(r"\begin{paramlist}")
+w(r"\item graphs --- one ER and one BA realisation, $N{=}800$ nodes, target "
+  r"$\langle k\rangle{=}10$, graph seed 1: a single fixed network per type so all "
+  r"three methods describe the \emph{same} object.")
+w(r"\item MC (ground truth) --- C++ engine: $T{=}0.65$ (Glauber temperature), 1500 "
+  r"sweeps (one sweep $=N$ update attempts), burn-in 450 (discarded), engine seed 1.")
+w(r"\item HMF input: $k=$ measured $\langle k\rangle$ of that graph --- the mean field "
+  r"sees the network only through this one number.")
+w(r"\item DMF input: measured degree histogram $P(k)$ of that graph --- one $(r,p,s)$ "
+  r"per degree class, so degree heterogeneity survives.")
+w(r"\item mean-field steps $=4000$ --- iterations of both deterministic maps; \mpsi{} "
+  r"from the last 50\%.")
+w(r"\item $\varepsilon$: 26 points on $[0,1]$ (spacing 0.04) --- the common grid on "
+  r"which all three curves are computed; RMSE is taken over all 26 points.")
+w(r"\end{paramlist}")
+w(r"\howobt{Three $m_\psi(\varepsilon)$ curves per graph: MC by P1--P4 (one engine "
+  r"run per $\varepsilon$), HMF/DMF by the deterministic maps fed the \emph{measured} "
+  r"$\langle k\rangle$ / $P(k)$ of the same graph, then P3--P4. Each RMSE cell is "
+  r"$\sqrt{\frac{1}{26}\sum_j(m^{\mathrm{MF}}_j-m^{\mathrm{MC}}_j)^2}$; DMF gain "
+  r"$=$ RMSE(HMF) $-$ RMSE(DMF); \epsc{} columns by P6.}")
 rows = []
 for g in ["ER", "BA"]:
     d = load(f"mean_field/comparison_suite_{g}_k10.csv")
@@ -214,13 +423,92 @@ w(r"graph & RMSE(HMF) & RMSE(DMF) & DMF gain & \epsc{}(MC) & \epsc{}(MF)\\\midru
 for g, rh, rd, em, eh, ed in rows:
     w(f"{g} & {f3(rh)} & {f3(rd)} & \\textbf{{{f3(rh-rd)}}} & {f2(em)} & {f2(eh)}\\\\")
 w(r"\bottomrule\end{tabular}")
-w(r"\caption{DMF beats HMF on both graphs; the DMF advantage is $\sim$2$\times$ larger "
-  r"on heterogeneous BA. Both mean fields overestimate the ordered phase "
-  r"(MC turns over at $\varepsilon\!\approx\!0.52$ vs $\approx\!0.64$).}\end{table}")
+gain_ratio = (rows[1][1] - rows[1][2]) / max(rows[0][1] - rows[0][2], 1e-9)
+w(rf"\caption{{DMF beats HMF on both graphs; the DMF advantage is "
+  rf"$\sim${gain_ratio:.1f}$\times$ larger on heterogeneous BA. Both mean fields "
+  rf"overestimate the ordered phase (MC turns over at "
+  rf"$\varepsilon\!\approx\!{f2(rows[0][3])}$ vs $\approx\!{f2(rows[0][4])}$ on ER).}}\end{{table}}")
 w(r"\begin{figure}[H]\centering")
 w(r"\includegraphics[width=0.49\textwidth]{mean_field/comparison_suite_ER_k10.png}\hfill")
 w(r"\includegraphics[width=0.49\textwidth]{mean_field/comparison_suite_BA_k10.png}")
 w(r"\caption{Comparison suite, ER (left) and BA (right).}\end{figure}")
+
+# 3.2 continued: the same accuracy test across T, k, N
+cgr = load("mean_field/compare_grid.csv")
+w(r"\paragraph{The same test across $T$, $\langle k\rangle$ and $N$.} The single "
+  r"operating point above could flatter (or hide) a mean field. The identical "
+  r"protocol is repeated over a grid: one axis varied at a time around the base "
+  r"point ($T{=}0.65$, $\langle k\rangle{=}10$, $N{=}800$), on both graphs.")
+w(r"\hyp{RMSE(DMF) $\le$ RMSE(HMF) everywhere, with the larger DMF advantage on BA "
+  r"(only the DMF sees the heavy-tailed $P(k)$). RMSE should \emph{grow} with $T$ "
+  r"(the MC boundary slides while the mean field lags), \emph{shrink} with "
+  r"$\langle k\rangle$ (MC \epsc{} rises toward the mean-field value), and be "
+  r"nearly flat in $N$ (both mean fields are $N$-blind, and the MC curve is "
+  r"intensive).}")
+w(r"\begin{paramlist}")
+w(r"\item $T\in\{0.4, 0.65, 1.0\}$, $\langle k\rangle\in\{6,10,20\}$, "
+  r"$N\in\{400,800,1600\}$ --- one axis at a time around the base point "
+  r"(7 distinct cells).")
+w(r"\item graphs --- one ER and one BA per cell; MC ground truth $=$ C++ engine, "
+  r"2 graph seeds averaged (P5), 26 $\varepsilon$ points on $[0,1]$.")
+w(r"\item HMF/DMF inputs --- measured $\langle k\rangle$ / measured $P(k)$ of each "
+  r"graph, $T$ passed through, 4000 map steps: identical to the base experiment.")
+w(r"\end{paramlist}")
+w(r"\howobt{Per cell and graph: three $m_\psi(\varepsilon)$ curves (P1--P4 for MC, "
+  r"the maps for HMF/DMF), RMSE per the Sec.~0.1 definition, \epsc{} by P6. Data: "
+  r"\texttt{mean\_field/compare\_grid.csv}.}")
+cgr_axes = [("$T$", "T", [0.40, 0.65, 1.00]), (r"$\langle k\rangle$", "k", [6, 10, 20]),
+            ("$N$", "N", [400, 800, 1600])]
+cgr_base = dict(T=0.65, k=10, N=800)
+def cgr_row(g_i, col, v):
+    c = dict(cgr_base); c[col] = v
+    s_ = ((cgr["graph"] == g_i) & (cgr["T"] == c["T"]) & (cgr["k"] == c["k"])
+          & (cgr["N"] == c["N"]))
+    return {n_: float(cgr[n_][s_][0]) for n_ in
+            ("rmse_hmf", "rmse_dmf", "epsc_mc", "epsc_hmf")}
+w(r"\begin{table}[H]\centering\small\begin{tabular}{llcccc}\toprule")
+w(r"axis & value & \multicolumn{2}{c}{ER: RMSE(HMF)/RMSE(DMF)} & "
+  r"\multicolumn{2}{c}{BA: RMSE(HMF)/RMSE(DMF)}\\\midrule")
+for alab, col, vals in cgr_axes:
+    for v in vals:
+        er_, ba_ = cgr_row(0, col, v), cgr_row(1, col, v)
+        star = r"\ (base)" if v == cgr_base[col] else ""
+        w(rf"{alab} & {v:g}{star} & {er_['rmse_hmf']:.3f} & {er_['rmse_dmf']:.3f} & "
+          rf"{ba_['rmse_hmf']:.3f} & {ba_['rmse_dmf']:.3f}\\")
+    w(r"\midrule" if col != "N" else r"\bottomrule")
+w(r"\end{tabular}")
+n_dmf_win = int(np.sum(cgr["rmse_dmf"] <= cgr["rmse_hmf"] + 1e-12))
+w(rf"\caption{{Mean-field accuracy across the grid: DMF $\le$ HMF in "
+  rf"{n_dmf_win}/{len(cgr)} cells.}}\end{{table}}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.92\textwidth]"
+  r"{mean_field/compare_grid.png}")
+w(r"\caption{RMSE vs MC per axis (top: ER, bottom: BA).}\end{figure}")
+cgr_t = [cgr_row(1, "T", v) for v in (0.40, 0.65, 1.00)]
+cgr_n = [cgr_row(1, "N", v) for v in (400, 800, 1600)]
+cgr_k = [cgr_row(1, "k", v) for v in (6, 10, 20)]
+n_er_win = int(np.sum((cgr["rmse_dmf"] <= cgr["rmse_hmf"] + 1e-12)[cgr["graph"] == 0]))
+n_ba_win = int(np.sum((cgr["rmse_dmf"] <= cgr["rmse_hmf"] + 1e-12)[cgr["graph"] == 1]))
+n_cells = int(np.sum(cgr["graph"] == 0))
+w(rf"\vrdct{{DMF $\le$ HMF holds in {n_dmf_win}/{len(cgr)} cells --- "
+  rf"{n_ba_win}/{n_cells} on BA vs {n_er_win}/{n_cells} on ER: the exceptions are "
+  r"ER cells, where $P(k)$ is narrow so the DMF's extra structure buys nothing "
+  r"and seed noise decides --- exactly the pattern the ``DMF wins \emph{via} "
+  r"$P(k)$'' mechanism implies. The "
+  r"$\langle k\rangle$ trend is as predicted (RMSE falls "
+  rf"{cgr_k[0]['rmse_hmf']:.2f} $\to$ {cgr_k[-1]['rmse_hmf']:.2f} on BA as the MC "
+  r"boundary climbs toward the mean-field one). The $T$ hypothesis is \emph{wrong "
+  rf"in sign}}: RMSE falls with $T$ ({cgr_t[0]['rmse_hmf']:.2f} $\to$ "
+  rf"{cgr_t[-1]['rmse_hmf']:.2f} on BA) because at $\langle k\rangle{{=}}10$ the HMF "
+  rf"is still $T$-responsive --- its \epsc{{}} drops ({cgr_t[0]['epsc_hmf']:.2f} "
+  rf"$\to$ {cgr_t[-1]['epsc_hmf']:.2f}) \emph{{faster}} than the MC one "
+  rf"({cgr_t[0]['epsc_mc']:.2f} $\to$ {cgr_t[-1]['epsc_mc']:.2f}), narrowing the "
+  r"mismatch region; the ``$T$-blind mean field'' picture only sets in at high "
+  r"$\langle k\rangle$ (Sec.~4.2). And $N$ is \emph{not} the null axis it was "
+  rf"assumed to be: RMSE grows with $N$ ({cgr_n[0]['rmse_hmf']:.2f} $\to$ "
+  rf"{cgr_n[-1]['rmse_hmf']:.2f} on BA) because the MC \epsc{{}} slides down as "
+  rf"$1/N$ ({cgr_n[0]['epsc_mc']:.2f} $\to$ {cgr_n[-1]['epsc_mc']:.2f}, the "
+  r"first-order drift of Sec.~5.1) while the mean fields stand still --- an "
+  r"independent MC-side confirmation of that drift.}")
 
 # 3.3 MC vs HMF overlay
 d = load("monte_carlo/mc_vs_hmf.csv")
@@ -228,9 +516,19 @@ w(r"\subsection*{3.3\quad Direct MC vs HMF overlay (ER, $\langle k\rangle{=}10$)
 w(r"\textit{What it is.} A head-to-head on a single ER graph: the MC transition curve "
   r"overlaid on the HMF prediction, to see exactly where and by how much the mean-field "
   r"approximation misplaces the critical point on a finite network.")
-w(r"\params{ER: $N{=}500$, $\langle k\rangle{=}10$, graph seed 1. MC: pure-Python "
-  r"reference, $T{=}0.65$, 1200 sweeps, burn-in 30\%, averaged over seeds $\{1,2,3\}$. "
-  r"HMF: $k{=}10$, 4000 steps. $\varepsilon$: 26 points on $[0,1]$.}")
+w(r"\begin{paramlist}")
+w(r"\item graph --- ER, $N{=}500$ nodes, $\langle k\rangle{=}10$ (average degree), "
+  r"graph seed 1 (fixes the realisation).")
+w(r"\item MC --- pure-Python reference implementation: $T{=}0.65$ (Glauber "
+  r"temperature), 1200 sweeps, burn-in 30\% (first 360 sweeps discarded).")
+w(r"\item MC seeds $\{1,2,3\}$ --- three independent RNG streams for the dynamics; "
+  r"the plotted curve is their average (P5).")
+w(r"\item HMF --- $k{=}10$ fed to the map, 4000 steps, \mpsi{} from the last 50\%.")
+w(r"\item $\varepsilon$: 26 points on $[0,1]$ --- shared sweep grid for both curves.")
+w(r"\end{paramlist}")
+w(r"\howobt{MC row: P1--P4 per $\varepsilon$ on each of the three seeds, then the "
+  r"seed average (P5); HMF row from the map as in Sec.~3.1. Both \epsc{} values by "
+  r"P6 on the respective 26-point curve.}")
 w(r"\begin{minipage}[t]{0.44\textwidth}\vspace{0pt}")
 w(r"\begin{tabular}{lc}\toprule model & \epsc{}\\\midrule")
 w(rf"MC (ground truth) & {f2(epsc(d['epsilon'], d['mc']))}\\")
@@ -239,6 +537,115 @@ w(r"\small MC transition precedes HMF: the mean field overestimates the ordered 
   r"region, as expected on a finite network.\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.52\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{monte_carlo/mc_vs_hmf.png}\end{minipage}")
+
+# 3.3 continued: overlay grid across T, k, N + BA
+ogr = load("monte_carlo/mc_vs_hmf_grid.csv")
+def ogr_ec(g_i, T, k, N):
+    tag = f"g{g_i}_T{int(T*100)}_k{k}_N{N}"
+    return (epsc(ogr["epsilon"], ogr[f"mc_{tag}"]),
+            epsc(ogr["epsilon"], ogr[f"hmf_{tag}"]))
+w(r"\paragraph{The same overlay across $T$, $\langle k\rangle$, $N$ --- and on BA.} "
+  r"One panel is one anecdote. The overlay is repeated with the validated C++ "
+  r"engine (Secs.~2--2.1) as the MC --- which is what makes a 12-panel grid "
+  r"affordable --- varying one axis at a time around (ER, $T{=}0.65$, "
+  r"$\langle k\rangle{=}10$, $N{=}500$), plus a BA row.")
+w(r"\hyp{The mean field misplaces the transition \emph{systematically}, not "
+  r"randomly: the MC--HMF gap in \epsc{} should shrink with $\langle k\rangle$ "
+  r"(approaching the high-$k$ regime of Sec.~4.2), persist at every $T$ (both "
+  r"boundaries move down together at this degree, cf.\ Sec.~3.2), and in $N$ grow "
+  r"slowly as the MC crossing slides down ($1/N$, Sec.~5.1) under a fixed HMF "
+  r"curve. The BA overlays should reproduce the ER ones at matched "
+  r"$\langle k\rangle$ (Sec.~4.1: ER $\approx$ BA).}")
+w(r"\begin{paramlist}")
+w(r"\item rows --- vary $T\in\{0.4,0.65,1.0\}$; vary $\langle k\rangle\in\{6,10,20\}$; "
+  r"vary $N\in\{250,500,1000\}$; BA row: BA at $\langle k\rangle{=}10$ and $20$, "
+  r"plus a direct ER-vs-BA MC panel.")
+w(r"\item MC --- C++ engine, 3 graph seeds averaged (P5), 26 $\varepsilon$ points; "
+  r"engine seed $=$ graph seed; production sweeps/burn-in.")
+w(r"\item HMF --- fed the \emph{measured} $\langle k\rangle$ of each graph "
+  r"(seed-averaged), 4000 map steps; $T$ passed through.")
+w(r"\end{paramlist}")
+w(r"\howobt{Per panel: P1--P5 for the MC curve, the map for HMF, both \epsc{} by P6 "
+  r"(printed in each panel title). Data: \texttt{monte\_carlo/mc\_vs\_hmf\_grid.csv}.}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.94\textwidth]"
+  r"{monte_carlo/mc_vs_hmf_grid.png}")
+w(r"\caption{MC (black) vs HMF (orange) overlays across the grid; bottom-right: "
+  r"ER vs BA MC curves coincide.}\end{figure}")
+o_k = [ogr_ec(0, 0.65, k, 500) for k in (6, 10, 20)]
+o_t = [ogr_ec(0, T, 10, 500) for T in (0.40, 0.65, 1.00)]
+o_n = [ogr_ec(0, 0.65, 10, N) for N in (250, 500, 1000)]
+o_ba = ogr_ec(1, 0.65, 10, 500)
+o_er = ogr_ec(0, 0.65, 10, 500)
+w(rf"\vrdct{{The $\langle k\rangle$ trend is confirmed: the MC--HMF gap shrinks "
+  rf"{o_k[0][1]-o_k[0][0]:.2f} $\to$ {o_k[2][1]-o_k[2][0]:.2f} from "
+  r"$\langle k\rangle{=}6$ to $20$. In $T$ the gap does \emph{not} grow "
+  rf"({o_t[0][1]-o_t[0][0]:.2f} / {o_t[1][1]-o_t[1][0]:.2f} / "
+  rf"{o_t[2][1]-o_t[2][0]:.2f} at $T{{=}}0.4/0.65/1.0$): at this degree the HMF "
+  r"tracks the temperature (Sec.~3.2's corrected picture), so the overlays shift "
+  r"together. In $N$ the HMF curve is frozen while the MC crossing walks left "
+  rf"({o_n[0][0]:.2f} $\to$ {o_n[2][0]:.2f}), widening the gap exactly as the "
+  rf"$1/N$ drift predicts. BA at matched $\langle k\rangle$ is the same picture as "
+  rf"ER (MC \epsc{{}} {o_ba[0]:.2f} vs {o_er[0]:.2f}; bottom-right panel overlays "
+  r"to line width) --- the mean-field error is set by $\langle k\rangle$ and $N$, "
+  r"not by the degree distribution.}")
+
+# 3.4 robustness: mean-field initial composition -> bistability
+smi = load("sensitivity/sens_mf_init.csv")
+smi_ks = sorted(set(int(k) for k in smi["k"]))
+w(r"\subsection*{3.4\quad Robustness: initial composition of the mean field --- "
+  r"and a bistable window}")
+w(r"\textit{What it is.} Every mean-field result above starts the map from "
+  r"$(r,p,s)_0=(0.40,0.35,0.25)$. Here the same $\varepsilon$ sweep is run from four "
+  r"starting compositions at $k{=}10$ and $k{=}20$: a near-symmetric start "
+  r"$(0.3334,0.3333,0.3333)$, the production default, and two Rock-leaning starts "
+  r"$(0.50,0.30,0.20)$ and $(0.90,0.05,0.05)$.")
+w(r"\hyp{The map is deterministic, so only which attractor the start flows to can "
+  r"matter. Deep in either phase the attractor is unique and reached fast: the three "
+  r"biased inits should agree \emph{everywhere}. The near-symmetric start is the "
+  r"predicted exception near \epsc{}: $(1/3,1/3,1/3)$ is an unstable fixed point, and "
+  r"the escape transient can outlast the measurement window where the map slows down.}")
+w(r"\begin{paramlist}")
+w(r"\item inits --- the four starting compositions above; the varied parameter.")
+w(rf"\item $k\in\{{{','.join(str(k) for k in smi_ks)}\}}$ --- mean degrees fed to the "
+  r"map, bracketing the Sec.~3 operating point.")
+w(r"\item $\varepsilon$: 81 points on $[0,1]$ (step 0.0125) --- finer than the MC grid "
+  r"because the deterministic map has no sampling noise to hide behind.")
+w(r"\item steps $=4000$, $T{=}0.65$, \mpsi{} from the last 50\% --- identical to "
+  r"Secs.~3.1--3.3, so any difference is attributable to the init alone.")
+w(r"\end{paramlist}")
+w(r"\howobt{One HMF trajectory (P1 replaced by the map) per (init, $k$, $\varepsilon$); "
+  r"P3--P4 on the last half; \epsc{} per curve by P6. Data: "
+  r"\texttt{sensitivity/sens\_mf\_init.csv}.}")
+w(r"\begin{table}[H]\centering\small\begin{tabular}{lcc}\toprule")
+w(r"init $(r,p,s)_0$ & \epsc{} ($k{=}10$) & \epsc{} ($k{=}20$)\\\midrule")
+smi_by = {}
+for row in smi:
+    smi_by.setdefault((row["init_r"], row["init_p"], row["init_s"]), {})[int(row["k"])] = row["eps_c"]
+smi_labels = ["near-symmetric", "default (production)", "biased", "strongly biased"]
+for (init, lab) in zip(smi_by.keys(), smi_labels):
+    vals = " & ".join(f3(smi_by[init][k]) for k in smi_ks)
+    w(rf"{lab} $({init[0]:g},{init[1]:g},{init[2]:g})$ & {vals}\\")
+w(r"\bottomrule\end{tabular}")
+smi_win = {k: (min(smi_by[i][k] for i in list(smi_by)[1:]),
+               max(smi_by[i][k] for i in list(smi_by)[1:])) for k in smi_ks}
+w(rf"\caption{{\epsc{{}} depends on the init near the transition: the three biased "
+  rf"inits alone span $[{f3(smi_win[10][0])},{f3(smi_win[10][1])}]$ at $k{{=}}10$ and "
+  rf"$[{f3(smi_win[20][0])},{f3(smi_win[20][1])}]$ at $k{{=}}20$.}}\end{{table}}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.9\textwidth]"
+  r"{sensitivity/sens_mf_init.png}")
+w(r"\caption{Inside the window the curves are flat at $m_\psi\approx1$ vs "
+  r"$m_\psi\approx0$ --- two coexisting attractors, not a slow transient.}\end{figure}")
+w(rf"\vrdct{{Half right, and the failure is a discovery. The near-symmetric start "
+  rf"misbehaves exactly as predicted (transient dip near the crossing at $k{{=}}10$). "
+  rf"But the biased inits do \emph{{not}} agree near \epsc{{}}: within "
+  rf"$[{f3(smi_win[10][0])},{f3(smi_win[10][1])}]$ ($k{{=}}10$) and "
+  rf"$[{f3(smi_win[20][0])},{f3(smi_win[20][1])}]$ ($k{{=}}20$) the consensus fixed "
+  r"point and the limit cycle are \emph{simultaneously stable} and the init picks the "
+  r"attractor. The mean-field transition is therefore subcritical (first-order-like, "
+  r"hysteretic): a mean-field ``\epsc'' is only defined given an init convention, and "
+  r"the production init sits on the conservative (lower) edge of the window. "
+  r"Secs.~4.2 and~5.1 meet the same first-order signature from independent "
+  r"directions.}")
 
 # ============================================================ 4. PHASE DIAGRAM
 w(r"\section*{4.\quad Phase diagram: $(\langle k\rangle\times\varepsilon)$ MC sweep}")
@@ -250,19 +657,35 @@ w(r"\textit{What it is.} The central result of the study. For each mean degree w
   r"average degree or by the shape of $P(k)$.")
 w(r"520 simulations per graph (20 degrees $\times$ 26 $\varepsilon$), $N{=}800$, fanned "
   r"across 16 cores in $\sim$6\,s each.")
-w(r"\params{$N{=}800$; $\langle k\rangle=2,4,\dots,40$ (20 values, one graph per degree, "
-  r"graph seed 1); $\varepsilon$: 26 points on $[0,1]$; $T{=}0.65$; 800 sweeps, burn-in "
-  r"240; engine seed 1; $20\times26=520$ runs per graph type, for ER and BA.}")
+w(r"\begin{paramlist}")
+w(r"\item $N{=}800$ --- nodes per graph (fixed, so only connectivity varies along "
+  r"the degree axis).")
+w(r"\item $\langle k\rangle=2,4,\dots,40$ --- the 20 average degrees tiling the "
+  r"vertical axis; one graph built per degree (graph seed 1), for ER and for BA.")
+w(r"\item $\varepsilon$: 26 points on $[0,1]$ --- the horizontal axis: cyclic-dominance "
+  r"strengths (spacing 0.04).")
+w(r"\item $T{=}0.65$ --- Glauber temperature, identical everywhere in the report.")
+w(r"\item sweeps $=800$, burn-in $=240$ --- run length per tile and the discarded "
+  r"transient; shorter than elsewhere because 520 runs are needed per panel.")
+w(r"\item engine seed $=1$ --- RNG seed of the dynamics, same for every tile "
+  r"(determinism: rerunning regenerates the CSV byte-for-byte).")
+w(r"\item budget --- $20\times26=520$ independent simulations per graph type.")
+w(r"\end{paramlist}")
+w(r"\howobt{Every heatmap tile is the \mpsi{} of one full MC run (P1--P4) at that "
+  r"$(\langle k\rangle,\varepsilon)$ --- 520 independent simulations per panel, no "
+  r"averaging or smoothing. Each \epsc{} table entry applies P6 to the 26-tile "
+  r"column at that degree.}")
 per = {}
 for g in ["ER", "BA"]:
     d = load(f"phase_diagram/phase_diagram_{g}.csv")
     degs = sorted(set(d["degree"].astype(int)))
     per[g] = [(k, epsc(d["epsilon"][d["degree"] == k], d["m_psi"][d["degree"] == k])) for k in degs]
-w(r"\begin{table}[H]\centering\small\begin{tabular}{l" + "c"*len(per["ER"]) + r"}\toprule")
+w(r"\begin{table}[H]\centering\small")
+w(r"\resizebox{\textwidth}{!}{\begin{tabular}{l" + "c"*len(per["ER"]) + r"}\toprule")
 w(r"$\langle k\rangle$ & " + " & ".join(str(k) for k, _ in per["ER"]) + r"\\\midrule")
 w(r"\epsc{} (ER) & " + " & ".join(f2(v) for _, v in per["ER"]) + r"\\")
 w(r"\epsc{} (BA) & " + " & ".join(f2(v) for _, v in per["BA"]) + r"\\")
-w(r"\bottomrule\end{tabular}")
+w(r"\bottomrule\end{tabular}}")
 w(r"\caption{Transition \epsc{} vs mean degree for ER and BA. The order--cycling "
   r"boundary bends upward with $\langle k\rangle$; ER and BA are nearly identical "
   r"$\Rightarrow$ for MC dynamics average degree dominates over the shape of $P(k)$.}\end{table}")
@@ -271,29 +694,271 @@ w(r"\includegraphics[width=0.49\textwidth]{phase_diagram/phase_diagram_ER.png}\h
 w(r"\includegraphics[width=0.49\textwidth]{phase_diagram/phase_diagram_BA.png}")
 w(r"\caption{MC phase diagrams: ER (left), BA (right).}\end{figure}")
 
-# 4.1 extracted critical boundary
+# 4 continued: extra diagrams at other T and N
 cb = load("phase_diagram/critical_boundary.csv")
+xb = load("phase_diagram/extra_diagrams_boundary.csv")
+xdiags = [(0.30, 800), (1.00, 800), (0.65, 300), (0.65, 2000)]
+w(r"\paragraph{Four more diagrams: is the picture an artefact of $T{=}0.65$, "
+  r"$N{=}800$?} The headline diagrams above fix temperature and size. Four "
+  r"additional $(\langle k\rangle\times\varepsilon)$ diagrams (ER) bracket the "
+  r"production point --- a cold and a hot one, a small and a large one --- each "
+  r"with its extracted boundary over the reference boundary of Sec.~4.1.")
+w(r"\hyp{The two-phase structure (ordered at small $\varepsilon$, cycling above a "
+  r"$\langle k\rangle$-dependent boundary) is universal across the grid; only the "
+  r"boundary moves. Colder $\to$ boundary up, hotter $\to$ down, with the largest "
+  r"$T$-shift at small $\langle k\rangle$ (effective noise $\sim T/k$, Sec.~4.2). "
+  r"Smaller $N$ $\to$ boundary up, larger $N$ $\to$ slightly down (the $1/N$ "
+  r"first-order drift, Sec.~5.1); $N$-shifts smaller than $T$-shifts at these "
+  r"values.}")
+w(r"\begin{paramlist}")
+w(rf"\item diagrams --- $(T,N)\in\{{{', '.join(f'({t:g},{n})' for t, n in xdiags)}\}}$: "
+  r"two temperatures at the production size, two sizes at the production "
+  r"temperature.")
+w(r"\item grid per diagram --- 12 degrees $\langle k\rangle\in[2,40]$ $\times$ 21 "
+  r"$\varepsilon$ points on $[0,1]$; ER, graph seed 1, engine seed 1, production "
+  r"sweeps/burn-in.")
+w(r"\item reference --- the Sec.~4.1 ER boundary ($T{=}0.65$, $N{=}800$), drawn on "
+  r"every panel and interpolated at the 12 degrees for the shift statistics.")
+w(r"\end{paramlist}")
+w(r"\howobt{One P1--P4 run per tile; per-degree \epsc{} by P6 gives each diagram's "
+  r"boundary; shifts are boundary minus reference at matched degree. Data: "
+  r"\texttt{phase\_diagram/extra\_diagrams.csv} (tiles) and "
+  r"\texttt{extra\_diagrams\_boundary.csv} (boundaries).}")
+w(r"\begin{table}[H]\centering\small\begin{tabular}{lccc}\toprule")
+w(r"diagram & mean shift & shift at $\langle k\rangle{=}4$ & shift at "
+  r"$\langle k\rangle{=}40$\\\midrule")
+for t_, n_ in xdiags:
+    s_ = (xb["T"] == t_) & (xb["N"] == n_)
+    refi = np.interp(xb["degree"][s_], cb["k"], cb["eps_c_ER"])
+    dv = xb["eps_c"][s_] - refi
+    d4 = float(dv[xb["degree"][s_] == 4][0])
+    d40 = float(dv[xb["degree"][s_] == 40][0])
+    w(rf"$T{{=}}{t_:g}$, $N{{=}}{n_}$ & {dv.mean():+.3f} & {d4:+.3f} & {d40:+.3f}\\")
+w(r"\bottomrule\end{tabular}")
+w(r"\caption{Boundary shift vs the reference ($T{=}0.65$, $N{=}800$): sign and "
+  r"$\langle k\rangle$-dependence as hypothesised.}\end{table}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.95\textwidth]"
+  r"{phase_diagram/extra_diagrams.png}")
+w(r"\caption{Extra phase diagrams; black: each diagram's boundary, green dashed: "
+  r"the reference. Red $=$ ordered, blue $=$ cycling.}\end{figure}")
+xb_stats = {}
+for t_, n_ in xdiags:
+    s_ = (xb["T"] == t_) & (xb["N"] == n_)
+    refi = np.interp(xb["degree"][s_], cb["k"], cb["eps_c_ER"])
+    xb_stats[(t_, n_)] = float((xb["eps_c"][s_] - refi).mean())
+w(rf"\vrdct{{Confirmed on every count. All four diagrams show the same two-phase "
+  rf"structure; the boundary moves up when cold ({xb_stats[(0.30,800)]:+.3f} mean "
+  rf"shift at $T{{=}}0.3$) and down when hot ({xb_stats[(1.00,800)]:+.3f} at "
+  rf"$T{{=}}1.0$), with the $T$-shift concentrated at small $\langle k\rangle$ "
+  r"(table) exactly as the $T/k$ effective-noise picture predicts. The size "
+  rf"shifts are smaller and signed as the $1/N$ drift requires: "
+  rf"{xb_stats[(0.65,300)]:+.3f} at $N{{=}}300$, {xb_stats[(0.65,2000)]:+.3f} at "
+  r"$N{=}2000$. The headline diagram is a representative slice of a smooth "
+  r"$(T,N)$ family, not a special point.}")
+
+# 4.1 extracted critical boundary
 gap = float(np.max(np.abs(cb["eps_c_ER"] - cb["eps_c_BA"])))
 w(r"\subsection*{4.1\quad Extracted critical boundary $\varepsilon_c(\langle k\rangle)$}")
 w(r"\textit{What it is.} The boundary pulled out of both heatmaps as a curve "
   r"(interpolated $m_\psi{=}0.5$ crossing per degree), with the HMF prediction from "
   r"Sec.~3.1 overlaid. One figure carries three claims: the boundary rises with "
   r"$\langle k\rangle$ (connectivity stabilises order), ER and BA coincide, and the "
-  r"mean field sits above the MC everywhere (overestimates order).")
-w(r"\params{No new simulations: computed from \texttt{phase\_diagram\_\{ER,BA\}.csv} "
-  r"(Sec.~4) and \texttt{hmf\_sweep.csv} (Sec.~3.1); \epsc{} by linear interpolation of "
-  r"the $m_\psi{=}0.5$ crossing; HMF curve clipped to the MC degree range "
-  r"$\langle k\rangle\le40$.}")
+  r"mean field sits above the MC throughout the plotted range (overestimates order; "
+  r"Sec.~4.2 maps where this stops holding).")
+w(r"\begin{paramlist}")
+w(r"\item inputs --- no new simulations: reads \texttt{phase\_diagram\_\{ER,BA\}.csv} "
+  r"(the 520-tile MC sweeps of Sec.~4) and \texttt{hmf\_sweep.csv} (Sec.~3.1).")
+w(r"\item \epsc{} --- one value per degree column, by linear interpolation of the "
+  r"$m_\psi{=}0.5$ crossing (P6); threshold 0.5 is the midpoint between the two phases.")
+w(r"\item clipping $\langle k\rangle\le40$ --- the HMF sweep extends to $k{=}200$; "
+  r"only the range overlapping the MC data is drawn.")
+w(r"\end{paramlist}")
 w(r"\begin{minipage}[t]{0.42\textwidth}\vspace{0pt}")
 w(rf"\begin{{tabular}}{{lc}}\toprule quantity & value\\\midrule "
   rf"$\max_k |\varepsilon_c^{{ER}}-\varepsilon_c^{{BA}}|$ & \textbf{{{gap:.3f}}}\\ "
   rf"boundary range & ${cb['eps_c_ER'].min():.2f}\to{cb['eps_c_ER'].max():.2f}$\\ "
   r"\bottomrule\end{tabular}\\[4pt]")
-w(r"\small The ER and BA boundaries agree within 0.04 at every one of the 20 degrees "
-  r"--- the strongest quantitative form of ``average degree matters, not $P(k)$''. "
-  r"Data: \texttt{critical\_boundary.csv}.\end{minipage}\hfill")
+w(rf"\small The ER and BA boundaries agree within {gap:.3f} at every one of the "
+  rf"{len(cb)} degrees --- the strongest quantitative form of ``average degree "
+  r"matters, not $P(k)$''. Each boundary point is P6 applied to one degree column "
+  r"of the Sec.~4 heatmaps. Data: \texttt{critical\_boundary.csv}.\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.54\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{phase_diagram/critical_boundary.png}\end{minipage}")
+
+# 4.2 robustness: temperature x degree
+stp = load("sensitivity/sens_temperature.csv")
+stp_ts = sorted(set(round(float(t), 2) for t in stp["T"]))
+stp_ks = sorted(set(int(k) for k in stp["k"]))
+w(r"\subsection*{4.2\quad Robustness: temperature $\times$ degree}")
+w(r"\textit{What it is.} The whole phase diagram is taken at $T{=}0.65$. Here \epsc{} "
+  r"is measured on a $T\times\langle k\rangle$ grid (MC, seed-averaged) with the HMF "
+  r"prediction computed on the same grid, to establish how the headline "
+  r"``$\varepsilon_c(\langle k\rangle)$'' depends on the one thermodynamic parameter "
+  r"it froze.")
+w(r"\hyp{$T$ is a genuine control parameter: the Glauber acceptance compares the "
+  r"payoff gain to $T$, so more noise weakens the ferromagnetic pinning and \epsc{} "
+  r"should fall monotonically with $T$ at every $\langle k\rangle$. But the payoff a "
+  r"node feels scales with its degree ($\Delta U\sim k$), so the \emph{effective} "
+  r"noise is $\sim T/k$ and the $T$-dependence should flatten as $\langle k\rangle$ "
+  r"grows. HMF should reproduce the trend while overestimating \epsc{} everywhere. "
+  r"The two-phase structure itself should survive at every $(T,k)$.}")
+w(r"\begin{paramlist}")
+w(rf"\item $T\in\{{{','.join(f'{t:g}' for t in stp_ts)}\}}$ --- Glauber temperatures "
+  r"bracketing the production value 0.65 on both sides; the varied thermodynamic knob.")
+w(rf"\item $\langle k\rangle\in\{{{','.join(str(k) for k in stp_ks)}\}}$ --- mean "
+  r"degrees; varied jointly with $T$ to expose the interaction.")
+w(r"\item graphs --- ER, $N{=}500$, 4 graph seeds (P5); engine seed $=$ graph seed.")
+w(r"\item $\varepsilon$: 21 points on $[0,1]$ (step 0.05), $T$ passed to the engine; "
+  r"1500 sweeps, burn-in 30\% --- otherwise the production protocol.")
+w(r"\item HMF --- same $(T,k)$ grid, 4000 map steps, \epsc{} from a fine 0.01 "
+  r"$\varepsilon$ grid (the map is deterministic, so its crossing need not be "
+  r"quantised by the MC grid).")
+w(r"\end{paramlist}")
+w(r"\howobt{P1--P4 per $(T,k,\varepsilon,\text{seed})$, \epsc{} by P6 per seed then "
+  r"averaged (P5), std across seeds as the uncertainty; HMF column by the map + P6. "
+  r"Data: \texttt{sensitivity/sens\_temperature.csv}.}")
+stp_ec = {(round(float(r_["T"]), 2), int(r_["k"])): (r_["eps_c_mc"], r_["eps_c_mc_std"],
+          r_["eps_c_hmf"]) for r_ in stp}
+w(r"\begin{table}[H]\centering\small\begin{tabular}{l" + "cc" * len(stp_ks) + r"}\toprule")
+w(r" & " + " & ".join(rf"\multicolumn{{2}}{{c}}{{$\langle k\rangle{{=}}{k}$}}" for k in stp_ks) + r"\\")
+w(r"$T$ & " + " & ".join(r"MC \epsc{} & HMF" for _ in stp_ks) + r"\\\midrule")
+for t in stp_ts:
+    cells = []
+    for k in stp_ks:
+        mc, sd, hm = stp_ec[(t, k)]
+        cells.append(rf"{f3(mc)}$\pm${sd:.3f} & {f3(hm)}")
+    w(rf"{t:g} & " + " & ".join(cells) + r"\\")
+w(r"\bottomrule\end{tabular}")
+stp_drop = {k: stp_ec[(stp_ts[0], k)][0] - stp_ec[(stp_ts[-1], k)][0] for k in stp_ks}
+w(rf"\caption{{MC \epsc{{}} falls monotonically with $T$ at every degree, and the fall "
+  rf"flattens with $\langle k\rangle$: total drop over $T\in[{stp_ts[0]:g},{stp_ts[-1]:g}]$ "
+  + ", ".join(rf"{stp_drop[k]:.3f} at $\langle k\rangle{{=}}{k}$" for k in stp_ks)
+  + r".}\end{table}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.92\textwidth]"
+  r"{sensitivity/sens_temperature.png}")
+w(r"\caption{Transition curves per degree (colour $=T$) and the extracted "
+  r"$\varepsilon_c(T)$ surface (bottom right).}\end{figure}")
+stp_gap8 = [stp_ec[(t, stp_ks[0])][2] - stp_ec[(t, stp_ks[0])][0] for t in stp_ts]
+stp_gap40 = [stp_ec[(t, stp_ks[-1])][2] - stp_ec[(t, stp_ks[-1])][0] for t in stp_ts]
+w(rf"\vrdct{{MC part confirmed on both counts: monotone decrease at every degree, and "
+  rf"the $T{{\times}}k$ interaction is exactly as predicted --- the drop shrinks "
+  rf"{stp_drop[stp_ks[0]]:.3f} $\to$ {stp_drop[stp_ks[-1]]:.3f} from "
+  rf"$\langle k\rangle{{=}}{stp_ks[0]}$ to {stp_ks[-1]}, so at $T{{=}}0.65$ the system "
+  r"is deep in the $k$-dominated regime, which is what licenses the report's "
+  r"``stability is a function of $\langle k\rangle$ alone''. The HMF half is "
+  rf"\emph{{refuted}} at high degree: the overestimate holds at "
+  rf"$\langle k\rangle{{=}}{stp_ks[0]}$ (gap $+{min(stp_gap8):.2f}$ to "
+  rf"$+{max(stp_gap8):.2f}$) but shrinks and \emph{{reverses}} by "
+  rf"$\langle k\rangle{{=}}{stp_ks[-1]}$ (gap ${min(stp_gap40):+.2f}$ to "
+  rf"${max(stp_gap40):+.2f}$), wiggling non-monotonically in $T$. Explanation via "
+  r"Sec.~3.4: for $kU\gg T$ the mean-field rates saturate to step functions, so the "
+  r"map's \epsc{} plateaus near 0.7 while the MC boundary keeps rising; and inside the "
+  r"bistable window a single-init \epsc{} measures a basin boundary, not a bifurcation "
+  r"point --- hence the wiggle. The ``HMF sits above MC'' claim of Sec.~4.1 is drawn "
+  r"for $\langle k\rangle\le10$, where it is correct; this experiment marks its domain "
+  r"of validity.}")
+
+# 4.3 robustness: graph seed vs MC seed
+ssd = load("sensitivity/sens_seeds.csv")
+ssd_ec = ssd["eps_c"]
+ssd_g = sorted(set(int(g) for g in ssd["graph_seed"]))
+ssd_m = sorted(set(int(s) for s in ssd["mc_seed"]))
+ssd_gm = np.array([[ssd_ec[(ssd["graph_seed"] == g) & (ssd["mc_seed"] == s)][0]
+                    for s in ssd_m] for g in ssd_g])
+ssd_graph_sd = ssd_gm.mean(axis=1).std()
+ssd_mc_sd = ssd_gm.mean(axis=0).std()
+ssd_cv = load("sensitivity/sens_seeds_curves.csv")
+ssd_pk = ssd_cv["epsilon"][np.argmax(ssd_cv["m_std"])]
+w(r"\subsection*{4.3\quad Robustness: graph seed vs MC seed}")
+w(rf"\textit{{What it is.}} Are single-realisation results representative? "
+  rf"{len(ssd_g)} graph seeds $\times$ {len(ssd_m)} engine seeds "
+  rf"($={len(ssd)}$ combinations) each run the full $\varepsilon$ sweep at the "
+  r"baseline point (ER, $N{=}500$, $\langle k\rangle{=}20$).")
+w(r"\hyp{Both seeds are nuisance parameters at this size: \epsc{} should scatter well "
+  r"under one grid step (0.05) across all combinations; $m_\psi$ scatter should peak "
+  r"at the crossing (critical fluctuations) and vanish deep in either phase; and the "
+  r"graph-seed and MC-seed contributions should be \emph{comparable}, because an ER "
+  r"graph at $\langle k\rangle{=}20$ is locally homogeneous --- no realisation owns "
+  r"structure (hubs, modules) that could shift the transition. If graph scatter "
+  r"dominated, the single-graph sweeps of Secs.~2--4 would not be representative.}")
+w(r"\begin{paramlist}")
+w(rf"\item graph seeds $\{{{ssd_g[0]}..{ssd_g[-1]}\}}$ --- independent ER realisations "
+  r"(quenched disorder).")
+w(rf"\item MC seeds $\{{{ssd_m[0]}..{ssd_m[-1]}\}}$ --- independent dynamics streams "
+  r"on each graph (thermal noise).")
+w(r"\item baseline system --- ER, $N{=}500$, $\langle k\rangle{=}20$, $T{=}0.65$, "
+  r"1500 sweeps, burn-in 30\%, $\varepsilon$: 21 points on $[0,1]$.")
+w(r"\end{paramlist}")
+w(r"\howobt{P1--P4 and P6 per combination (no averaging --- the scatter \emph{is} the "
+  r"measurement); the two seed types are separated by averaging \epsc{} over one "
+  r"index and taking the std over the other. Data: "
+  r"\texttt{sensitivity/sens\_seeds.csv}.}")
+w(r"\begin{minipage}[t]{0.40\textwidth}\vspace{0pt}")
+w(r"\begin{tabular}{lc}\toprule quantity & value\\\midrule")
+w(rf"\epsc{{}} mean & {ssd_ec.mean():.4f}\\")
+w(rf"total std ({len(ssd)} combos) & {ssd_ec.std():.4f}\\")
+w(rf"range & {ssd_ec.max()-ssd_ec.min():.4f}\\")
+w(rf"graph-seed std & {ssd_graph_sd:.4f}\\")
+w(rf"MC-seed std & {ssd_mc_sd:.4f}\\")
+w(rf"$m_\psi$ scatter peak & at $\varepsilon={ssd_pk:.2f}$\\")
+w(r"\bottomrule\end{tabular}\end{minipage}\hfill")
+w(r"\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\centering")
+w(r"\includegraphics[width=\linewidth]{sensitivity/sens_seeds.png}\end{minipage}")
+w(rf"\vrdct{{Confirmed on all three counts: total \epsc{{}} std {ssd_ec.std():.4f} is "
+  rf"$\sim${0.05/max(ssd_ec.std(),1e-9):.0f}$\times$ below the grid step; the scatter "
+  rf"of $m_\psi$ peaks exactly at the crossing ($\varepsilon={ssd_pk:.2f}$, cf.\ "
+  rf"\epsc{{}} $={ssd_ec.mean():.2f}$) and is zero at $\varepsilon{{=}}0$; and the "
+  rf"graph/MC decomposition is {ssd_graph_sd:.4f} vs {ssd_mc_sd:.4f} --- "
+  r"indistinguishable, as local homogeneity predicts. Seed averaging in this report "
+  r"buys cosmetic smoothness, not correctness; single-realisation sweeps are "
+  r"representative.}")
+
+# 4.4 robustness: eps-grid resolution and the estimator
+sgr = load("sensitivity/sens_grid.csv")
+sgr_ref = sgr["eps_c_interp"][np.argmin(sgr["step"])]
+w(r"\subsection*{4.4\quad Robustness: $\varepsilon$-grid resolution and the \epsc{} "
+  r"estimator}")
+w(r"\textit{What it is.} One fine sweep (step 0.0125, 4 seeds averaged, baseline "
+  r"system) is \emph{subsampled} to steps 0.025, 0.05 and 0.10, so every resolution "
+  r"sees identical simulation data and only the grid handed to the estimator "
+  r"changes. Both the project estimator (P6, interpolated) and the naive "
+  r"first-point-below convention are applied to each grid.")
+w(r"\hyp{The interpolated estimator makes grid step a nuisance parameter: "
+  r"$m(\varepsilon)$ is near-linear across one step at the crossing, so the "
+  r"\epsc{} shift should stay well below half a step even at 0.10, converging as the "
+  r"step shrinks. The naive estimator should be biased by up to a full step, and "
+  r"always upward (it can only round toward larger $\varepsilon$).}")
+w(r"\begin{paramlist}")
+w(r"\item base sweep --- 81 $\varepsilon$ points on $[0,1]$ (step 0.0125), ER, "
+  r"$N{=}500$, $\langle k\rangle{=}20$, 4 graph seeds averaged (P5).")
+w(rf"\item grid steps $\in\{{{', '.join(f'{s:g}' for s in sgr['step'])}\}}$ --- exact "
+  r"subsampling of the same curve; the varied parameter.")
+w(r"\item estimators --- P6 (interpolated crossing) vs the first grid point with "
+  r"$m_\psi<0.5$ (the project's old convention, kept as the control).")
+w(r"\end{paramlist}")
+w(r"\howobt{No new simulations beyond the base sweep: subsample, apply both "
+  r"estimators, compare to the finest-grid value. Data: "
+  r"\texttt{sensitivity/sens\_grid.csv}.}")
+w(r"\begin{minipage}[t]{0.40\textwidth}\vspace{0pt}")
+w(r"\begin{tabular}{lcc}\toprule step & interp.\ shift & naive shift\\\midrule")
+for r_ in sgr:
+    w(rf"{r_['step']:g} & {r_['eps_c_interp']-sgr_ref:+.4f} & "
+      rf"{r_['eps_c_naive']-sgr_ref:+.4f}\\")
+w(r"\bottomrule\end{tabular}\\[4pt]")
+w(r"\small Shifts relative to the finest-grid interpolated value "
+  rf"({sgr_ref:.4f}).\end{{minipage}}\hfill")
+w(r"\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\centering")
+w(r"\includegraphics[width=\linewidth]{sensitivity/sens_grid.png}\end{minipage}")
+sgr_i05 = float(sgr["eps_c_interp"][np.isclose(sgr["step"], 0.05)][0] - sgr_ref)
+sgr_n05 = float(sgr["eps_c_naive"][np.isclose(sgr["step"], 0.05)][0] - sgr_ref)
+w(rf"\vrdct{{Confirmed. At the production step 0.05 the interpolated estimator is off "
+  rf"by {sgr_i05:+.4f} (a tenth of a step) while the naive one is off by "
+  rf"{sgr_n05:+.4f}; at step 0.10 the naive bias reaches "
+  rf"{float(sgr['eps_c_naive'][np.isclose(sgr['step'],0.10)][0]-sgr_ref):+.4f} --- "
+  r"order a full step and always positive, as predicted. Interpolation buys "
+  r"$\sim$4$\times$ effective resolution; the project-wide convention (P6) is "
+  r"validated, and every \epsc{} in this report inherits a grid uncertainty of "
+  r"at most $\sim$0.005.}")
 
 # ============================================================ 5. DYNAMICS / FSS
 w(r"\section*{5.\quad Dynamics and finite-size scaling}")
@@ -304,12 +969,42 @@ w(r"\textit{What it is.} Three views that confirm the transition is a real phase
   r"composition simplex --- a fixed corner means consensus, a closed orbit means the "
   r"endless RPS chase. \textbf{Stability:} classify the mean-field fixed points "
   r"(consensus vs limit cycle) on either side of \epsc{}.")
-w(r"\params{FSS: ER, $\langle k\rangle{=}10$, $N\in\{200,500,1000,2000\}$ (graph seed 1 "
-  r"each); $\varepsilon$: 21 points on $[0.35,0.75]$; engine, $T{=}0.65$, 1200 sweeps "
-  r"(burn-in 360), seed 1. Ternary: ER, $N{=}500$, $\langle k\rangle{=}10$, graph seed 1; "
-  r"Python MC, 1200 sweeps, MC seed 3; $\varepsilon\in\{0.2,\,0.95\}$. Stability: HMF, "
-  r"$k{=}10$, $T{=}0.65$, 600 steps, init $(1/3{+}\delta,\,1/3,\,1/3{-}\delta)$ with "
-  r"$\delta{=}0.02$; $\varepsilon\in\{0.2,\,0.5,\,0.7,\,0.95\}$.}")
+w(r"\begin{paramlist}")
+w(r"\item \textbf{FSS} (left panel)")
+w(r"\begin{itemize}\setlength{\itemsep}{0pt}")
+w(r"\item graph --- ER at fixed $\langle k\rangle{=}10$, so only size varies.")
+w(r"\item $N\in\{200,500,1000,2000\}$ --- the system sizes compared: the control "
+  r"variable of finite-size scaling (graph seed 1 for each).")
+w(r"\item $\varepsilon$: 21 points on $[0.35,0.75]$ --- grid deliberately zoomed onto "
+  r"the transition region for resolution where the curves are steep.")
+w(r"\item engine --- $T{=}0.65$, 1200 sweeps (burn-in 360 discarded), seed 1.")
+w(r"\end{itemize}")
+w(r"\item \textbf{Ternary portrait} (middle panel)")
+w(r"\begin{itemize}\setlength{\itemsep}{0pt}")
+w(r"\item graph --- ER, $N{=}500$, $\langle k\rangle{=}10$, graph seed 1.")
+w(r"\item dynamics --- pure-Python MC, 1200 sweeps, MC seed 3; the raw per-sweep "
+  r"$(r,p,s)$ trajectory is plotted, so no burn-in or averaging.")
+w(r"\item $\varepsilon\in\{0.2,\,0.95\}$ --- one value per phase: consensus corner vs "
+  r"cycling orbit.")
+w(r"\end{itemize}")
+w(r"\item \textbf{Stability} (right panel)")
+w(r"\begin{itemize}\setlength{\itemsep}{0pt}")
+w(r"\item model --- HMF map at $k{=}10$, $T{=}0.65$, 600 steps (enough to see decay "
+  r"or growth of the perturbation).")
+w(r"\item init $(1/3{+}\delta,\,1/3,\,1/3{-}\delta)$, $\delta{=}0.02$ --- a small kick "
+  r"off the symmetric fixed point, whose fate classifies the fixed point's stability.")
+w(r"\item $\varepsilon\in\{0.2,\,0.5,\,0.7,\,0.95\}$ --- values straddling \epsc{}, to "
+  r"show the switch from stable consensus to limit cycle.")
+w(r"\end{itemize}")
+w(r"\end{paramlist}")
+w(r"\howobt{FSS: one engine run (P1--P4) per $(N,\varepsilon)$; \epsc{} row by P6 per "
+  r"$N$-column; max$|$slope$|$ is the discrete steepness "
+  r"$\max_j|m_{j+1}{-}m_j|/(\varepsilon_{j+1}{-}\varepsilon_j)$ of that column --- it "
+  r"must grow with $N$ if the transition is sharpening. Ternary: the raw per-sweep "
+  r"$(r,p,s)$ series from P2 plotted directly in the simplex (no averaging), so "
+  r"consensus shows as a point and cycling as an orbit. Stability: the HMF map is "
+  r"started a distance $\delta$ from the symmetric point and the trajectory is "
+  r"classified by whether the perturbation decays or grows into a limit cycle.}")
 fss = load("dynamics/fss.csv")
 Ns = [c for c in fss.dtype.names if c != "epsilon"]
 w(r"\begin{table}[H]\centering\small\begin{tabular}{lcccc}\toprule")
@@ -318,14 +1013,121 @@ w(r"\epsc{} & " + " & ".join(f3(epsc(fss["epsilon"], fss[n])) for n in Ns) + r"\
 slopes = [np.max(np.abs(np.diff(fss[n]) / np.diff(fss["epsilon"]))) for n in Ns]
 w(r"max$|$slope$|$ & " + " & ".join(f"{s:.0f}" for s in slopes) + r"\\")
 w(r"\bottomrule\end{tabular}")
-w(r"\caption{Finite-size scaling (ER, $\langle k\rangle{=}10$): the transition sharpens "
-  r"and \epsc{} converges toward $\approx$0.51 as $N$ grows $200\!\to\!2000$.}\end{table}")
+fss_ec_conv = epsc(fss["epsilon"], fss[Ns[-1]])
+w(rf"\caption{{Finite-size scaling (ER, $\langle k\rangle{{=}}10$): the transition sharpens "
+  rf"and \epsc{{}} converges toward $\approx${f2(fss_ec_conv)} as $N$ grows "
+  rf"${Ns[0][1:]}\!\to\!{Ns[-1][1:]}$.}}\end{{table}}")
 w(r"\begin{figure}[H]\centering")
 w(r"\includegraphics[width=0.32\textwidth]{dynamics/fss.png}\hfill")
 w(r"\includegraphics[width=0.32\textwidth]{dynamics/ternary.png}\hfill")
 w(r"\includegraphics[width=0.32\textwidth]{dynamics/stability.png}")
 w(r"\caption{Left: FSS. Middle: ternary phase portrait (corner consensus below "
   r"\epsc{}, limit cycle above). Right: fixed-point stability.}\end{figure}")
+
+# 5.1 robustness: system size at the k=20 operating point
+ssz = load("sensitivity/sens_size.csv")
+ssz_ns = [int(n) for n in ssz["N"]]
+ssz_extrap = 2 * ssz["eps_c"][-1] - ssz["eps_c"][-2]        # Richardson, 1/N ansatz
+w(r"\subsection*{5.1\quad Robustness: system size at $\langle k\rangle{=}20$}")
+w(r"\textit{What it is.} The FSS panel above works at $\langle k\rangle{=}10$; this "
+  r"extends it to the $\langle k\rangle{=}20$ operating point used by the robustness "
+  r"suite, with full $\varepsilon$ sweeps at six sizes and a fine grid (step 0.0125) "
+  r"across the transition.")
+w(r"\hyp{\epsc{} is a property of the local neighbourhood ($\langle k\rangle$), not of "
+  r"$N$: the crossing should drift only weakly and settle by $N\sim1000$. Three "
+  r"finite-size effects \emph{should} scale away: the transition width shrinks, "
+  r"seed scatter shrinks, and cycling-phase $m_\psi$ falls as $1/\sqrt{N}$ (finite-$N$ "
+  r"cycling amplitude is a fluctuation effect).}")
+w(r"\begin{paramlist}")
+w(rf"\item $N\in\{{{','.join(str(n) for n in ssz_ns)}\}}$ --- five octaves of system "
+  r"size; the varied parameter (ER, $\langle k\rangle{=}20$ fixed).")
+w(r"\item seeds --- 4 graph seeds per size (P5); engine seed $=$ graph seed.")
+w(r"\item $\varepsilon$ grids --- 21 points on $[0,1]$ (curves, cycling metrics) "
+  r"$+$ 29 points on $[0.45,0.80]$ at step 0.0125 (\epsc{}, width): the production "
+  r"grid quantises the $N$-drift because the transition is sharper than one 0.05 step.")
+w(r"\item engine --- $T{=}0.65$, 1500 sweeps, burn-in 30\% (production protocol).")
+w(r"\item width --- distance between the $m_\psi{=}0.75$ and $0.25$ crossings "
+  r"(interpolated), a resolution-independent sharpness measure.")
+w(r"\end{paramlist}")
+w(r"\howobt{P1--P4 per $(N,\varepsilon,\text{seed})$; \epsc{} by P6 per seed on the "
+  r"fine grid, then mean$\pm$std (P5); cycling metrics from the coarse grid "
+  r"($\varepsilon\ge0.8$). Data: \texttt{sensitivity/sens\_size.csv}.}")
+w(r"\begin{table}[H]\centering\small\begin{tabular}{lcccc}\toprule")
+w(r"$N$ & \epsc{} & width & $m_\psi$ (cycling) & seed scatter (cycling)\\\midrule")
+for r_ in ssz:
+    w(rf"{int(r_['N'])} & {f3(r_['eps_c'])}$\pm${r_['eps_c_std']:.3f} & "
+      rf"{r_['width']:.3f} & {r_['m_cycle']:.4f} & {r_['sd_cycle']:.4f}\\")
+w(r"\bottomrule\end{tabular}")
+w(rf"\caption{{\epsc{{}} drifts \emph{{down}} smoothly with $N$; the gap to "
+  rf"{f2(ssz_extrap)} halves per doubling of $N$ ($\sim1/N$), extrapolating "
+  rf"(Richardson, two largest sizes) to $\varepsilon_c(\infty)\approx{f3(ssz_extrap)}$ "
+  r"at $\langle k\rangle{=}20$.}\end{table}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.9\textwidth]"
+  r"{sensitivity/sens_size.png}")
+w(r"\caption{Left: fine-grid transition curves. Right: cycling-phase metrics vs the "
+  r"$1/\sqrt{N}$ guide (log--log).}\end{figure}")
+w(rf"\vrdct{{Half confirmed, half corrected by the data. Confirmed: cycling-phase "
+  rf"$m_\psi$ follows $1/\sqrt{{N}}$ over five octaves "
+  rf"({ssz['m_cycle'][0]:.4f} $\to$ {ssz['m_cycle'][-1]:.4f} $\approx$ "
+  rf"$1/\sqrt{{{ssz_ns[-1]//ssz_ns[0]}}}$ of the start), seed scatter shrinks "
+  r"alongside, and the transition sharpens (the width metric bottoms out at the "
+  r"4-seed noise floor $\sim$0.01). Corrected: ``settles by $N\sim1000$'' is wrong "
+  rf"--- the crossing keeps sliding, {f3(ssz['eps_c'][0])} $\to$ "
+  rf"{f3(ssz['eps_c'][-1])}, as $\sim1/N$. A $1/N$ shift of the pseudo-transition "
+  r"point is the standard finite-size scaling of a \emph{first-order} transition --- "
+  r"the same subcriticality Sec.~3.4 found in the mean field, now visible in the "
+  r"agent-level MC. Practical reading: quoted \epsc{} values are $N$-finite "
+  rf"estimates (at $N{{=}}500$, high by $\approx{ssz['eps_c'][2]-ssz_extrap:.2f}$ "
+  r"at this degree); every \emph{comparison} in this report (ER vs BA, damaged vs "
+  r"pristine, MC vs MF) is made at matched $N$, so the conclusions are unaffected.}")
+
+# 5.2 robustness: simulation length
+seq = load("sensitivity/sens_equilibration.csv")
+seq_sw = [int(s) for s in seq["sweeps"]]
+w(r"\subsection*{5.2\quad Robustness: simulation length}")
+w(r"\textit{What it is.} Does 1500 sweeps suffice? The baseline sweep is repeated at "
+  r"six run lengths (burn-in held at 30\% of each), with the 6000-sweep curve as the "
+  r"reference.")
+w(r"\hyp{Two opposite finite-\emph{time} biases, one per phase. Cycling side: "
+  r"$m_\psi=|\overline{\psi}|$ vanishes only when the window covers many rotations of "
+  r"$\psi(t)$, so a short window biases it \emph{up}. Ordered side: a short run may "
+  r"not finish ordering from the random start, biasing $m_\psi$ \emph{down}. The "
+  r"cycling-side bias should push the $m_\psi{=}0.5$ crossing right, so \epsc{} is "
+  r"\emph{over}estimated at small sweeps, converging from above by $\sim$1500. RMSE "
+  r"against the reference should fall monotonically.}")
+w(r"\begin{paramlist}")
+w(rf"\item sweeps $\in\{{{','.join(str(s) for s in seq_sw)}\}}$ --- run lengths; the "
+  r"varied parameter. One sweep $=N$ attempted updates.")
+w(r"\item burn-in $=30\%$ of each run --- scales with the run so the discarded "
+  r"transient fraction is constant (the production convention).")
+w(r"\item baseline system --- ER, $N{=}500$, $\langle k\rangle{=}20$, $T{=}0.65$, "
+  r"4 graph seeds (P5), $\varepsilon$: 21 points on $[0,1]$.")
+w(r"\item reference --- the 6000-sweep seed-averaged curve; RMSE is computed "
+  r"against it over the whole grid.")
+w(r"\end{paramlist}")
+w(r"\howobt{P1--P4 per (sweeps, $\varepsilon$, seed) with burn-in $0.3\times$sweeps, "
+  r"seed-averaged (P5); \epsc{} by P6 per run length; RMSE vs the 6000-sweep curve. "
+  r"Data: \texttt{sensitivity/sens\_equilibration.csv}.}")
+w(r"\begin{minipage}[t]{0.40\textwidth}\vspace{0pt}")
+w(r"\begin{tabular}{lccc}\toprule sweeps & \epsc{} & RMSE & $m_\psi$ (cyc.)\\\midrule")
+for r_ in seq:
+    tag = r"\ (default)" if int(r_["sweeps"]) == 1500 else ""
+    w(rf"{int(r_['sweeps'])}{tag} & {f3(r_['eps_c'])} & {r_['rmse_vs_ref']:.3f} & "
+      rf"{r_['m_cycle']:.4f}\\")
+w(r"\bottomrule\end{tabular}\end{minipage}\hfill")
+w(r"\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\centering")
+w(r"\includegraphics[width=\linewidth]{sensitivity/sens_equilibration.png}\end{minipage}")
+w(rf"\vrdct{{Mechanisms right, sign wrong, default validated. Both predicted biases "
+  rf"exist, but their sizes were misjudged: the cycling-side up-bias is real yet tiny "
+  rf"({seq['m_cycle'][0]:.4f} at {seq_sw[0]} sweeps vs {seq['m_cycle'][-1]:.4f} at "
+  rf"{seq_sw[-1]} --- nowhere near the 0.5 threshold), while the ordered-side "
+  rf"down-bias is large: at {seq_sw[0]} sweeps the run cannot finish ordering near "
+  rf"the transition, $m_\psi$ dips below 0.5 early, and \epsc{{}} comes out "
+  rf"\emph{{under}}estimated ({f3(seq['eps_c'][0])} vs {f3(seq['eps_c'][-1])}). "
+  rf"The crossing sits on the steep ordered flank, so that bias owns the sign. "
+  rf"Convergence is complete by 1000 sweeps (\epsc{{}} flat, RMSE at the "
+  rf"{seq['rmse_vs_ref'][2]:.3f} seed-noise floor): the production 1500 carries a "
+  r"$\sim$2$\times$ safety margin.}")
 
 # ============================================================ 6. PERTURBATION EXPERIMENTS
 w(r"\section*{6.\quad Perturbation experiments}")
@@ -346,10 +1148,27 @@ w(r"\textit{What it is.} A fraction $z$ of nodes are turned into \emph{zealots} 
   r"nodes end up playing Rock) and the global order $m_\psi$. The classic question of "
   r"whether a committed minority can drive consensus --- but asked in a cyclic system, "
   r"where pushing Rock also feeds Rock's predator.")
-w(r"\params{ER: $N{=}800$, $\langle k\rangle{=}10$; 12 graphs (seeds 1--12), curves "
-  r"seed-averaged. Zealots: strategy Rock, random placement; $z$: 17 points on "
-  r"$[0,0.20]$. Engine: $T{=}0.65$, 1500 sweeps (burn-in 450). $\varepsilon{=}0.3$ "
-  r"(ordering panel) and $0.9$ (cycling panel).}")
+w(r"\begin{paramlist}")
+w(r"\item graphs --- ER, $N{=}800$ nodes, $\langle k\rangle{=}10$ (average degree); "
+  r"12 independent realisations (seeds 1--12), every plotted point is the 12-seed "
+  r"average (P5).")
+w(r"\item zealot strategy $=$ Rock --- the strategy the committed minority is locked "
+  r"to (by symmetry the choice is arbitrary).")
+w(r"\item placement $=$ random --- the $\lfloor zN\rceil$ zealot nodes are drawn "
+  r"uniformly from the network.")
+w(r"\item $z$: 17 points on $[0,0.20]$ --- zealot fraction, the control variable "
+  r"(up to one node in five committed).")
+w(r"\item engine --- $T{=}0.65$ (Glauber temperature), 1500 sweeps, burn-in 450 "
+  r"(discarded).")
+w(r"\item $\varepsilon{=}0.3$ / $0.9$ --- one value inside each phase: the ordering "
+  r"panel and the cycling panel of the figure.")
+w(r"\end{paramlist}")
+w(r"\howobt{For each $(z,\varepsilon,\text{seed})$: one engine run in which the "
+  r"$\lfloor zN\rceil$ zealot nodes are drawn uniformly, locked to Rock, and skipped by "
+  r"the update loop (P1). Conversion is recomputed every post-burn-in sweep as "
+  r"(free nodes playing Rock)/(free nodes) --- zealots excluded from numerator and "
+  r"denominator --- then time-averaged like \mpsi{} (P4) and averaged over the 12 "
+  r"graphs (P5). The table shows every 4th point of the 17-point $z$ grid.}")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$z$ & conv$_{\text{ord}}$ & \mpsi$_{\text{ord}}$ & conv$_{\text{cyc}}$ & \mpsi$_{\text{cyc}}$\\\midrule")
@@ -363,16 +1182,153 @@ w(r"conv $=$ fraction of \emph{free} nodes playing Rock. Ordering phase: Rock-co
   r"\textbf{Conclusion.} A committed minority cannot spread its own strategy in a cyclic "
   r"system --- every zealot acts as food for its predator, so pushing Rock elects Paper. "
   r"And the two phases fail oppositely: the ordered phase is \emph{compositionally "
-  r"fragile} (5\% zealots dictate the winner) while the cycling phase is nearly immune "
-  r"(\mpsi{} only 0.18 even at $z{=}0.20$)."
+  rf"fragile}} ({z['z'][4]*100:.0f}\% zealots dictate the winner: free-Rock conversion "
+  rf"{f2(z['order_conversion'][4])} at $z{{=}}{f2(z['z'][4])}$) while the cycling phase "
+  rf"is nearly immune (\mpsi{{}} only {f2(z['cycle_mpsi'][-1])} even at "
+  rf"$z{{=}}{f2(z['z'][-1])}$)."
   r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.48\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{zealots/zealots.png}\end{minipage}")
+
+# 6.1 continued (a): the zealot experiment across T, k, N
+zgr = load("zealots/zealots_grid.csv")
+zgr_base = dict(T=0.65, k=10, N=800)
+def zgr_sel(col, v, eps):
+    c = dict(zgr_base); c[col] = v
+    return ((zgr["T"] == c["T"]) & (zgr["k"] == c["k"]) & (zgr["N"] == c["N"])
+            & (zgr["epsilon"] == eps))
+w(r"\paragraph{The same experiment across $T$, $\langle k\rangle$ and $N$.} Is the "
+  r"backfire a property of the operating point or of the model? The protocol above "
+  r"is repeated with one axis varied at a time around (ER, $N{=}800$, "
+  r"$\langle k\rangle{=}10$, $T{=}0.65$).")
+w(r"\hyp{The backfire is generic: in every cell, small-$z$ Rock-zealots should "
+  r"hand the ordering-phase network to Paper, never to Rock. $T$ controls the "
+  r"\emph{sharpness}: hotter systems pin the beater-consensus less strongly and "
+  r"need more zealots before the large-$z$ re-pinning on Rock appears. "
+  r"$\langle k\rangle$ strengthens local majority pressure (effective noise "
+  r"$\sim T/k$), so denser graphs backfire more cleanly. $N$ is a null axis: "
+  r"conversion and \mpsi{} are intensive, so the curves should coincide within "
+  r"seed noise, only smoother at larger $N$.}")
+w(r"\begin{paramlist}")
+w(r"\item $T\in\{0.4,0.65,1.0\}$, $\langle k\rangle\in\{6,10,20\}$, "
+  r"$N\in\{400,800,1600\}$ --- one axis at a time (7 distinct cells).")
+w(r"\item $z$: 9 fractions on $[0,0.2]$; zealots Rock, random placement; 8 graph "
+  r"seeds per point (P5); both phases ($\varepsilon{=}0.3$ and $0.9$).")
+w(r"\item observables --- conversion (Sec.~0.1), \mpsi{}, and $\rho_{Paper}$ (the "
+  r"beater's global fraction), per cell and $z$.")
+w(r"\end{paramlist}")
+w(r"\howobt{P1--P4 per (cell, phase, $z$, seed) with the zealot machinery of "
+  r"Sec.~6.1, then P5; the figure shows mean$\pm$std over seeds. Data: "
+  r"\texttt{zealots/zealots\_grid.csv}.}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.88\textwidth]"
+  r"{zealots/zealots_grid.png}")
+w(r"\caption{Rows: vary $T$ / $\langle k\rangle$ / $N$. Left: ordering-phase "
+  r"conversion (dashed: $\rho_{Paper}$). Right: cycling-phase \mpsi{}.}\end{figure}")
+z05 = 0.05
+zpap = {("T", v): float(zgr["rho_paper"][zgr_sel("T", v, 0.3)
+                                         & np.isclose(zgr["z"], z05)][0])
+        for v in (0.40, 0.65, 1.00)}
+zpap.update({("k", v): float(zgr["rho_paper"][zgr_sel("k", v, 0.3)
+                                              & np.isclose(zgr["z"], z05)][0])
+             for v in (6, 20)})
+zconv20 = {v: float(zgr["conversion"][zgr_sel("T", v, 0.3)
+                                      & np.isclose(zgr["z"], 0.2)][0])
+           for v in (0.40, 0.65, 1.00)}
+# N comparison: split the z grid into points where every N is deterministic
+# (no seed flipped to Rock: sd small) and points where flips occur
+zn_conv = {v: {float(z_): (float(zgr["conversion"][zgr_sel("N", v, 0.3)
+                                                   & np.isclose(zgr["z"], z_)][0]),
+                           float(zgr["conversion_sd"][zgr_sel("N", v, 0.3)
+                                                      & np.isclose(zgr["z"], z_)][0]))
+               for z_ in np.linspace(0.0, 0.20, 9)} for v in (400, 800, 1600)}
+zdet = [z_ for z_ in np.linspace(0.0, 0.20, 9)
+        if all(zn_conv[v][float(z_)][1] < 0.05 for v in (400, 800, 1600))]
+zn_gap = max(abs(zn_conv[v][float(z_)][0] - zn_conv[800][float(z_)][0])
+             for v in (400, 1600) for z_ in zdet)
+zn_flip20 = {v: zn_conv[v][0.2][0] for v in (400, 800, 1600)}
+w(rf"\vrdct{{The backfire is generic: at $z{{=}}0.05$ the beater's population "
+  rf"$\rho_{{Paper}}$ reaches {zpap[('T',0.40)]:.2f}/{zpap[('T',0.65)]:.2f}/"
+  rf"{zpap[('T',1.00)]:.2f} for $T{{=}}0.4/0.65/1.0$ and "
+  rf"{zpap[('k',6)]:.2f}/{zpap[('k',20)]:.2f} for $\langle k\rangle{{=}}6/20$ --- "
+  r"Rock-zealots elect Paper in every cell, never Rock. The $T$ prediction holds: "
+  rf"the large-$z$ re-pinning on Rock weakens with heat (conversion at $z{{=}}0.2$: "
+  rf"{zconv20[0.40]:.2f}/{zconv20[0.65]:.2f}/{zconv20[1.00]:.2f}), and the "
+  r"cycling phase stays immune everywhere (right column). $N$ is a null axis "
+  r"for the \emph{deterministic} part of the response: wherever no seed flips "
+  rf"to Rock at any size, the conversion gap across $N$ is $\le{zn_gap:.3f}$. "
+  r"What $N$ does change is the \emph{probability} of the stochastic large-$z$ "
+  r"flips onto the zealots' own strategy: the flipped fraction of seeds at "
+  rf"$z{{=}}0.2$ falls {zn_flip20[400]:.2f} $\to$ {zn_flip20[800]:.2f} $\to$ "
+  rf"{zn_flip20[1600]:.2f} for $N{{=}}400/800/1600$ --- flipping the whole free "
+  r"network is a collective fluctuation that becomes rarer with size, so larger "
+  r"systems backfire \emph{more} reliably, refining rather than breaking the "
+  r"null-axis prediction.}")
+
+# 6.1 continued (b): the time signal -- who led, what happened, who won
+tss = load("zealots/timeseries_story.csv")
+SNAMES = ["Rock", "Paper", "Scissors"]
+w(r"\paragraph{The zealot story as a time signal.} Everything above is "
+  r"time-averaged; here four runs are shown \emph{per sweep} --- who led at the "
+  r"start, what the zealots changed, when the lead flipped, and where it ended. "
+  r"One ER graph ($N{=}800$, $\langle k\rangle{=}10$, seed 3), per-sweep global "
+  r"$(r,p,s)$ recorded by the engine (no RNG cost, so these are exactly the runs "
+  r"the summary numbers come from).")
+w(r"\begin{paramlist}")
+w(r"\item scenarios --- $(\varepsilon,z)$: $(0.3,0)$ clean ordering; $(0.3,0.05)$ "
+  r"the backfire; $(0.3,0.20)$ a large faction; $(0.9,0.10)$ cycling. Zealots "
+  r"Rock, random placement.")
+w(r"\item recording --- every sweep $t=0\dots1500$ including burn-in (the story "
+  r"needs the transient the other sections discard); log time axis because "
+  r"consensus on a dense random graph forms within $\sim$10 sweeps.")
+w(r"\end{paramlist}")
+w(r"\howobt{One engine run per scenario with \texttt{--timeseries}; the story "
+  r"table lists the $t{=}0$ composition (P2 at $t{=}0$), the final winner "
+  r"(largest tail-averaged fraction), the sweep it took the lead for good, and "
+  r"the sweep it crossed 50\%. Data: \texttt{zealots/timeseries.csv} (signals), "
+  r"\texttt{timeseries\_story.csv} (story).}")
+w(r"\begin{table}[H]\centering\small\begin{tabular}{llllcl}\toprule")
+w(r"scenario & start $(r,p,s)$ & initial leader & winner & majority at & final "
+  r"$(r,p,s)$\\\midrule")
+tlabels = ["clean ordering", "backfire", "large faction", "cycling"]
+for i, lab in enumerate(tlabels):
+    win = (SNAMES[int(tss['winner'][i])] if tss["epsilon"][i] < 0.5
+           else "none (cycling)")
+    maj = (f"sweep {int(tss['t_majority'][i])}" if tss["t_majority"][i] > 0
+           else "never")
+    w(rf"{lab} ($\varepsilon{{=}}{tss['epsilon'][i]:g}$, $z{{=}}{tss['z'][i]:g}$) & "
+      rf"({tss['r0'][i]:.2f}, {tss['p0'][i]:.2f}, {tss['s0'][i]:.2f}) & "
+      rf"{SNAMES[int(tss['initial_leader'][i])]} & {win} & {maj} & "
+      rf"({tss['r_final'][i]:.2f}, {tss['p_final'][i]:.2f}, "
+      rf"{tss['s_final'][i]:.2f})\\")
+w(r"\bottomrule\end{tabular}")
+w(r"\caption{The story table, computed from the recorded signals.}\end{table}")
+w(r"\begin{figure}[H]\centering\includegraphics[width=0.95\textwidth]"
+  r"{zealots/timeseries.png}")
+w(r"\caption{Per-sweep population fractions (log time). Dash-dotted red line: the "
+  r"zealot floor $z$ below which Rock cannot fall.}\end{figure}")
+w(rf"\textbf{{Reading the signals.}} \emph{{Clean ordering}}: all three start near "
+  rf"$1/3$ ({SNAMES[int(tss['initial_leader'][0])]} marginally ahead at "
+  rf"{max(tss['r0'][0], tss['p0'][0], tss['s0'][0]):.2f}); whoever leads early "
+  rf"snowballs, and by sweep {int(tss['t_majority'][0])} it is a majority --- the "
+  r"winner is decided by the random start. \emph{Backfire}: the zealots make "
+  rf"Rock the initial leader ({tss['r0'][1]:.2f}), yet Paper --- Rock's predator "
+  rf"--- overtakes immediately, is a majority by sweep "
+  rf"{int(tss['t_majority'][1])}, and Rock is eaten down to its zealot floor "
+  rf"$z{{=}}{tss['z'][1]:g}$ (final $r{{=}}{tss['r_final'][1]:.2f}$): planting "
+  r"zealots \emph{selected the winner for the enemy}. \emph{Large faction}: Rock "
+  rf"first \emph{{grows}} (to {float(load('zealots/timeseries.csv')['r_e30_z20'].max()):.2f}, feeding on Scissors) before Paper "
+  rf"catches up at sweep {int(tss['t_majority'][2])} and pins it at the floor "
+  rf"$z{{=}}{tss['z'][2]:g}$ --- the rise-then-collapse is the cyclic mechanism "
+  r"in real time. \emph{Cycling}: no winner ever; the oscillations grow into the "
+  r"noisy steady chase and the zealots change nothing --- exactly why the "
+  r"time-\emph{averaged} \mpsi{} of Sec.~6.1 is the right order parameter.")
 
 # 6.2 hubs
 h = load("zealots/zealots_hubs.csv")
 selh = [0, 4, 8, 12, 15]           # z up to 0.10
 amp = h["cycle_hub_mpsi"][-1] / max(h["cycle_random_mpsi"][-1], 1e-9)
+sat = np.where(h["order_hub_conversion"] >= 0.9)[0]   # hub zealots pin their own strategy
+z_sat = float(h["z"][sat[0]]) if len(sat) else float(h["z"][-1])
 w(r"\subsection*{6.2\quad Hub vs random placement (BA, 15 seeds)}")
 w(r"\textit{What it is.} The same Rock-zealots, but now we compare \emph{where} they sit "
   r"on a scale-free BA network: spread at random versus concentrated on the "
@@ -380,10 +1336,23 @@ w(r"\textit{What it is.} The same Rock-zealots, but now we compare \emph{where} 
   r"raw structural targeting amplifies a minority's reach --- and whether that extra "
   r"reach lets it dictate \emph{which} strategy wins, or merely \emph{whether} the "
   r"network orders at all.")
-w(r"\params{BA: $N{=}800$, $\langle k\rangle{=}10$; 15 graphs (seeds 1--15), curves "
-  r"seed-averaged. Rock-zealots, placement $\in$ \{random, top-degree hubs\}; $z$: 16 "
-  r"points on $[0,0.10]$. Engine: $T{=}0.65$, 1500 sweeps (burn-in 450). "
-  r"$\varepsilon\in\{0.3,\,0.9\}$.}")
+w(r"\begin{paramlist}")
+w(r"\item graphs --- BA (scale-free, so hubs exist), $N{=}800$, $\langle k\rangle{=}10$; "
+  r"15 realisations (seeds 1--15), curves are the 15-seed average (P5).")
+w(r"\item zealot strategy $=$ Rock --- as in Sec.~6.1.")
+w(r"\item placement $\in$ \{random, hub\} --- the variable under test: \emph{random} "
+  r"draws the zealot set uniformly, \emph{hub} locks the $\lfloor zN\rceil$ "
+  r"highest-degree nodes; same budget, different position.")
+w(r"\item $z$: 16 points on $[0,0.10]$ --- zealot fraction; capped at 10\% because hub "
+  r"placement saturates early.")
+w(r"\item engine --- $T{=}0.65$, 1500 sweeps, burn-in 450.")
+w(r"\item $\varepsilon\in\{0.3,\,0.9\}$ --- ordering-phase and cycling-phase panels.")
+w(r"\end{paramlist}")
+w(r"\howobt{Identical pipeline to Sec.~6.1 (P1--P5 with locked zealot nodes), except "
+  r"the placement rule: \emph{random} draws the zealot set uniformly, \emph{hub} sorts "
+  r"nodes by degree and locks the top $\lfloor zN\rceil$. The quoted amplification is "
+  r"the ratio of the two seed-averaged \mpsi{} values at the largest budget "
+  r"$z{=}0.10$ in the cycling phase.}")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$z$ & \mpsi$^{\text{rand}}_{\text{cyc}}$ & \mpsi$^{\text{hub}}_{\text{cyc}}$ "
@@ -395,12 +1364,14 @@ w(r"\bottomrule\end{tabular}\\[4pt]")
 w(rf"Cycling phase at $z{{=}}0.10$: hub \mpsi$={f2(h['cycle_hub_mpsi'][-1])}$ vs random "
   rf"$={f2(h['cycle_random_mpsi'][-1])}$ --- a \textbf{{{amp:.1f}$\times$ amplification}}. "
   r"Hubs control \emph{whether} the network orders, not \emph{what} it orders on.\\[4pt]"
-  r"\textbf{Conclusion.} Position beats numbers: the same zealot budget is worth "
-  r"$\sim$9$\times$ more on hubs. But structural leverage only sets the \emph{onset} of "
-  r"order --- the cycle still picks the winner (Paper), except at $z{\gtrsim}0.08$ in the "
-  r"ordering phase, where hubs saturate their neighbourhoods and finally pin their own "
-  r"strategy (conversion$\to$1). Minority takeover is possible, but only with both "
-  r"structural targeting \emph{and} an already-ordering system."
+  rf"\textbf{{Conclusion.}} Position beats numbers: the same zealot budget is worth "
+  rf"$\sim${amp:.0f}$\times$ more on hubs. But structural leverage only sets the "
+  rf"\emph{{onset}} of order --- the cycle still picks the winner (Paper), except at "
+  rf"$z{{\gtrsim}}{f2(z_sat)}$ in the ordering phase, where hubs saturate their "
+  rf"neighbourhoods and finally pin their own strategy (free-node conversion "
+  rf"{f2(h['order_hub_conversion'][-1])} at $z{{=}}{f2(h['z'][-1])}$). Minority "
+  r"takeover is possible, but only with both structural targeting \emph{and} an "
+  r"already-ordering system."
   r"\end{minipage}\hfill")
 w(r"\begin{minipage}[t]{0.48\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{zealots/zealots_hubs.png}\end{minipage}")
@@ -413,10 +1384,23 @@ w(r"\textit{What it is.} Two opposing zealot factions of equal size $z$ --- one 
   r"population $(\rho_{\text{rock}},\rho_{\text{paper}},\rho_{\text{sciss}})$. In a cyclic "
   r"game the naive guess is that the two cancel and the third strategy (Scissors, which "
   r"beats Paper) profits; this experiment checks whether that actually happens.")
-w(r"\params{ER: $N{=}800$, $\langle k\rangle{=}10$; 12 graphs (seeds 1--12), curves "
-  r"seed-averaged. Factions: Rock and Paper, each of fraction $z$ (total $2z$), random "
-  r"placement; $z$: 16 points on $[0,0.10]$. Engine: $T{=}0.65$, 1500 sweeps (burn-in "
-  r"450). $\varepsilon\in\{0.3,\,0.9\}$. $\rho$ columns include the zealots themselves.}")
+w(r"\begin{paramlist}")
+w(r"\item graphs --- ER, $N{=}800$, $\langle k\rangle{=}10$; 12 realisations "
+  r"(seeds 1--12), curves seed-averaged (P5).")
+w(r"\item factions --- two zealot groups locked to Rock and to Paper respectively, "
+  r"each of fraction $z$ (so $2z$ of the network is committed in total), both placed "
+  r"at random; equal sizes make the cyclic relation the only asymmetry.")
+w(r"\item $z$: 16 points on $[0,0.10]$ --- per-faction fraction, the control variable.")
+w(r"\item engine --- $T{=}0.65$, 1500 sweeps, burn-in 450.")
+w(r"\item $\varepsilon\in\{0.3,\,0.9\}$ --- ordering-phase and cycling-phase panels.")
+w(r"\item $\rho_x$ --- time-averaged fraction of \emph{all} nodes playing $x$, zealots "
+  r"included; each faction's own $z$ is therefore a floor on its $\rho$.")
+w(r"\end{paramlist}")
+w(r"\howobt{As Sec.~6.1 but with two locked factions: $\lfloor zN\rceil$ Rock-zealots "
+  r"and $\lfloor zN\rceil$ Paper-zealots drawn from the remaining nodes (both skipped "
+  r"by P1). Each $\rho_x$ is the P2 cluster fraction of strategy $x$ over \emph{all} "
+  r"nodes, time-averaged (P4) and seed-averaged (P5) --- so a faction's own $z$ is a "
+  r"floor on its $\rho$, and the interesting signal is the free remainder.}")
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lccc}\toprule")
 w(r"$z$ (each) & $\rho_{\text{rock}}$ & $\rho_{\text{paper}}$ & $\rho_{\text{sciss}}$"
@@ -425,10 +1409,11 @@ for i in selh:
     w(f"{f2(mx['z'][i])} & {f2(mx['order_rho_rock'][i])} & {f2(mx['order_rho_paper'][i])} & "
       f"{f2(mx['order_rho_scissors'][i])}\\\\")
 w(r"\bottomrule\end{tabular}\\[4pt]")
-w(r"With equal Rock+Paper zealots, the ordering-phase free population goes to "
-  r"\textbf{Paper} ($\rho{\approx}0.90$), \emph{not} Scissors: Paper is reinforced both by "
-  r"its own zealots and by the Rock-zealots it preys on. Cycling phase stays robust "
-  r"(\mpsi$\approx$0.08).\\[4pt]"
+w(rf"With equal Rock+Paper zealots, the ordering-phase population goes to "
+  rf"\textbf{{Paper}} ($\rho{{=}}{f2(mx['order_rho_paper'][-1])}$ at "
+  rf"$z{{=}}{f2(mx['z'][-1])}$), \emph{{not}} Scissors: Paper is reinforced both by "
+  rf"its own zealots and by the Rock-zealots it preys on. Cycling phase stays robust "
+  rf"(\mpsi$\le${f2(float(np.max(mx['cycle_mpsi'])))}).\\[4pt]"
   r"\textbf{Conclusion.} Competition between committed factions is decided by the cyclic "
   r"relation between them, not by their (equal) sizes: the faction that preys on the "
   r"other collects a double reinforcement and wins outright, while the bystander "
@@ -447,22 +1432,40 @@ w(r"\textit{What it is.} Instead of adding agents we \emph{damage} the network: 
   r"connectivity stabilises order, quenched disorder should erode it --- and comparing "
   r"the two damage types (matched by the mean degree they leave behind) tests whether "
   r"only the effective $\langle k\rangle$ matters.")
-w(r"\params{ER before damage: $N{=}1000$, $\langle k\rangle{=}20$; 6 graphs (seeds "
-  r"1--6), curves seed-averaged. Damage: remove fraction $f\in\{0,\,0.3,\,0.6,\,0.8\}$ "
-  r"of edges, or of nodes, uniformly at random (same seed as the graph). $\varepsilon$: "
-  r"26 points on $[0,1]$; engine, $T{=}0.65$, 1000 sweeps (burn-in 300), seed $=$ graph "
-  r"seed.}")
+w(r"\begin{paramlist}")
+w(r"\item graphs (before damage) --- ER, $N{=}1000$ nodes, $\langle k\rangle{=}20$; a "
+  r"deliberately dense starting point so heavy damage still leaves a connected core; "
+  r"6 realisations (seeds 1--6), curves seed-averaged (P5).")
+w(r"\item damage type $\in$ \{edge, node\} --- the variable under test: remove either "
+  r"links (breaking interactions, keeping all agents) or whole nodes (vacancies, "
+  r"removing agents and all their links).")
+w(r"\item $f\in\{0,\,0.3,\,0.6,\,0.8\}$ --- fraction removed, uniformly at random; "
+  r"$f{=}0$ is the pristine baseline; damage RNG seed $=$ graph seed (quenched: the "
+  r"damage is fixed before the dynamics starts and never heals).")
+w(r"\item $\varepsilon$: 26 points on $[0,1]$ --- full transition sweep per "
+  r"(type, $f$) combination.")
+w(r"\item engine --- $T{=}0.65$, 1000 sweeps, burn-in 300, dynamics seed $=$ graph "
+  r"seed.")
+w(r"\end{paramlist}")
+w(r"\howobt{For each (damage type, $f$): every one of the 6 graphs is damaged, swept "
+  r"in $\varepsilon$ (one P1--P4 run per point), and the 6 $m_\psi(\varepsilon)$ curves "
+  r"are averaged (P5); the table's \epsc{} is P6 applied to that averaged curve. "
+  r"$\langle k\rangle$ after damage $=2E'/N'$ of the damaged graph (surviving edges "
+  r"$E'$, surviving nodes $N'$), averaged over the 6 realisations.}")
 fr = sorted(set(d["f"]))
+ec_edge = {}
 w(r"\begin{minipage}[t]{0.5\textwidth}\vspace{0pt}\small")
 w(r"\begin{tabular}{lcccc}\toprule")
 w(r"$f$ & \epsc{}(edge) & $\langle k\rangle$(edge) & \epsc{}(node) & $\langle k\rangle$(node)\\\midrule")
 for f in fr:
     e = d[(d["defect_type_0edge_1node"] == 0) & (d["f"] == f)]
     n = d[(d["defect_type_0edge_1node"] == 1) & (d["f"] == f)]
-    w(f"{f2(f)} & {f2(epsc(e['epsilon'], e['m_psi']))} & {e['mean_k'][0]:.1f} & "
+    ec_edge[f] = epsc(e["epsilon"], e["m_psi"])
+    w(f"{f2(f)} & {f2(ec_edge[f])} & {e['mean_k'][0]:.1f} & "
       f"{f2(epsc(n['epsilon'], n['m_psi']))} & {n['mean_k'][0]:.1f}\\\\")
 w(r"\bottomrule\end{tabular}\\[4pt]")
-w(r"Removing edges or nodes slides \epsc{} down ($0.64\!\to\!0.24$). Edge and node "
+w(rf"Removing edges or nodes slides \epsc{{}} down "
+  rf"(${f2(ec_edge[fr[0]])}\!\to\!{f2(ec_edge[fr[-1]])}$). Edge and node "
   r"defects \textbf{coincide} once matched by the resulting $\langle k\rangle$ "
   r"$\Rightarrow$ order-stability depends on effective $\langle k\rangle$ only.\\[4pt]"
   r"\textbf{Conclusion.} \emph{How much} you damage matters; \emph{how} you damage does "
@@ -482,19 +1485,31 @@ w(r"\textit{What it is.} The decisive check on Sec.~6.4: each damaged network "
   r"contributes one point (resulting $\langle k\rangle$, \epsc{}), plotted over the "
   r"\emph{pristine}-ER boundary extracted in Sec.~4.1. If damage only matters through "
   r"the mean degree it leaves behind, every point must land on the pristine curve.")
-w(r"\params{No new simulations: computed from \texttt{defects.csv} (Sec.~6.4, $N{=}1000$ "
-  r"damaged graphs) and \texttt{phase\_diagram\_ER.csv} (Sec.~4, $N{=}800$ pristine "
-  r"graphs); \epsc{} by linear interpolation of the $m_\psi{=}0.5$ crossing for both "
-  r"data sets.}")
+w(r"\begin{paramlist}")
+w(r"\item inputs --- no new simulations: reads \texttt{defects.csv} (Sec.~6.4, the "
+  r"$N{=}1000$ damaged graphs) and \texttt{phase\_diagram\_ER.csv} (Sec.~4, the "
+  r"$N{=}800$ pristine graphs); the deliberate $N$ mismatch makes the collapse a "
+  r"stronger test.")
+w(r"\item \epsc{} --- linear interpolation of the $m_\psi{=}0.5$ crossing (P6), applied "
+  r"identically to both data sets.")
+w(r"\item coordinates --- each damaged network is placed at its \emph{effective} "
+  r"$\langle k\rangle$, the mean degree $2E'/N'$ left after damage, not at its "
+  r"nominal pre-damage degree.")
+w(r"\end{paramlist}")
+w(r"\howobt{Each damaged network contributes the coordinate pair (effective "
+  r"$\langle k\rangle$ after damage, \epsc{} from P6 on its seed-averaged sweep) --- "
+  r"one point per (damage type, $f$) cell of Sec.~6.4 --- and is overplotted on the "
+  r"pristine ER boundary of Sec.~4.1.}")
 w(r"\begin{minipage}[t]{0.42\textwidth}\vspace{0pt}")
 w(rf"\begin{{tabular}}{{lc}}\toprule quantity & value\\\midrule "
   rf"$\max_f |\varepsilon_c^{{edge}}-\varepsilon_c^{{node}}|$ & \textbf{{{dev:.3f}}}\\ "
-  rf"points on pristine curve & 8/8\\ \bottomrule\end{{tabular}}\\[4pt]")
-w(r"\small All eight damaged-network points (4 edge + 4 node, and at a different $N$ "
+  rf"points on pristine curve & {2*len(cl)}/{2*len(cl)}\\ \bottomrule\end{{tabular}}\\[4pt]")
+w(rf"\small All {2*len(cl)} damaged-network points ({len(cl)} edge + {len(cl)} node, "
+  r"and at a different $N$ "
   r"than the pristine sweep) fall on the undamaged boundary: a damaged network is "
   r"indistinguishable from a pristine one of the same average degree. "
   r"Data: \texttt{defects\_collapse.csv}.\\[4pt]"
-  r"\textbf{Conclusion.} Together with Sec.~4.1 (ER $\equiv$ BA within 0.04), this "
+  rf"\textbf{{Conclusion.}} Together with Sec.~4.1 (ER $\equiv$ BA within {gap:.2f}), this "
   r"collapses every network studied --- random or scale-free, pristine or damaged, "
   r"$N{=}800$ or $1000$ --- onto a \emph{one-parameter family}: order stability in this "
   r"model is a function of $\langle k\rangle$ alone. Neither the shape of $P(k)$ nor the "
@@ -503,16 +1518,144 @@ w(r"\small All eight damaged-network points (4 edge + 4 node, and at a different
 w(r"\begin{minipage}[t]{0.54\textwidth}\vspace{0pt}\centering")
 w(r"\includegraphics[width=\linewidth]{defects/defects_collapse.png}\end{minipage}")
 
-# 6.6 synthesis of the perturbation experiments
-w(r"\subsection*{6.6\quad What the perturbation experiments say together}")
+# 6.6 robustness: zealot strategy label (exact symmetry as a null test)
+szl = load("sensitivity/sens_zealot_symmetry.csv")
+szp = load("sensitivity/sens_zealot_pvals.csv")
+szp_ord = szp[szp["epsilon"] < 0.5]
+szp_cyc = szp[szp["epsilon"] > 0.5]
+szl_zs = sorted(set(round(float(z_), 4) for z_ in szl["z"]))
+szl_nsig = int(np.sum(szp["p_value"] < 0.05))
+szl_ncoal = int(np.sum(szp["coalesced"] > 0.5))
+w(r"\subsection*{6.6\quad Robustness: the zealot strategy label --- an exact "
+  r"symmetry as a null test}")
+w(r"\textit{What it is.} Secs.~6.1--6.2 lock zealots to Rock. The payoff matrix is "
+  r"exactly symmetric under the cyclic relabeling R$\to$P$\to$S$\to$R, so the choice "
+  r"of label must change \emph{nothing} statistically. The Sec.~6.1 protocol is run "
+  r"for all three labels; this is the designated ``parameter that should not "
+  r"matter'', tested rather than assumed.")
+w(r"\hyp{No effect: conversion$(z)$ and $m_\psi(z)$ statistically identical across "
+  r"labels at every $z$, and the backfire of Sec.~6.1 (the free network adopts the "
+  r"strategy that \emph{beats} the zealots) must appear for every label --- "
+  r"Paper-zealots breed Scissors, etc. Any systematic label dependence would expose "
+  r"an implementation bug (asymmetric proposal move, payoff indexing), not physics.}")
+w(r"\begin{paramlist}")
+w(r"\item zealot strategy $\in\{$R, P, S$\}$ --- the varied (null) parameter.")
+w(rf"\item $z$: {len(szl_zs)} fractions on $[{szl_zs[0]:g},{szl_zs[-1]:g}]$ --- "
+  r"$z{=}0$ is excluded because with no zealots the label is undefined (all three "
+  r"would measure the \emph{same} run against different names, a deterministic, "
+  r"not statistical, difference).")
+w(r"\item seeds --- 32 per (label, $z$, phase); the seed also draws graph and zealot "
+  r"placement, so the placement realisation is varied at the same time.")
+w(r"\item system --- ER, $N{=}800$, $\langle k\rangle{=}10$, random placement, both "
+  r"phases ($\varepsilon{=}0.3$ and $0.9$): the Sec.~6.1 protocol exactly.")
+w(r"\item test --- paired permutation test (2000 resamples): under the null the "
+  r"three label values of one seed are exchangeable, so permuting labels "
+  r"\emph{within} each seed gives the exact null distribution of the label spread. "
+  r"(A Gaussian $2\sigma$ rule is miscalibrated here: at large $z$ the seed-level "
+  r"outcome is bimodal --- a realisation either flips to the zealot consensus or "
+  r"does not.)")
+w(r"\end{paramlist}")
+w(r"\howobt{P1--P4 per (label, $z$, seed, phase) with conversion as in Sec.~6.1; at "
+  r"each $z$ the label spread (max$-$min of the three label means) is compared to "
+  r"its permutation null. Data: \texttt{sensitivity/sens\_zealot\_symmetry.csv}, "
+  r"p-values in \texttt{sens\_zealot\_pvals.csv}.}")
+w(r"\begin{minipage}[t]{0.40\textwidth}\vspace{0pt}")
+w(r"\begin{tabular}{lcc}\toprule & ordering & cycling\\\midrule")
+w(rf"$z$-points with $p<0.05$ & {int(np.sum(szp_ord['p_value']<0.05))}/{len(szp_ord)} "
+  rf"& {int(np.sum(szp_cyc['p_value']<0.05))}/{len(szp_cyc)}\\")
+w(rf"min $p$ & {szp_ord['p_value'].min():.2f} & {szp_cyc['p_value'].min():.2f}\\")
+w(rf"exactly zero spread & {int(np.sum(szp_ord['coalesced']>0.5))}/{len(szp_ord)} & "
+  rf"{int(np.sum(szp_cyc['coalesced']>0.5))}/{len(szp_cyc)}\\")
+w(r"\bottomrule\end{tabular}\\[4pt]")
+w(rf"\small {szl_nsig}/{len(szp)} tests significant overall --- the textbook "
+  r"false-positive rate for exact null hypotheses at the 0.05 level."
+  r"\end{minipage}\hfill")
+w(r"\begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\centering")
+w(r"\includegraphics[width=\linewidth]{sensitivity/sens_zealot_symmetry.png}"
+  r"\end{minipage}")
+w(rf"\vrdct{{Confirmed, with a bonus. The three labels are statistically "
+  rf"indistinguishable ({szl_nsig}/{len(szp)} significant at 0.05 --- consistent with "
+  r"pure false positives), the backfire appears for every label (each free network "
+  r"converges onto that label's beater --- dashed curves in the figure), and in the "
+  rf"cycling phase the three curves overlap to line width. Bonus: at {szl_ncoal} "
+  r"$z$-points the label spread is \emph{exactly} zero. The engine's RNG consumption "
+  r"is state-independent, so relabeled runs share an aligned random stream; once each "
+  r"reaches its (label-rotated) consensus they are the same trajectory up to "
+  r"rotation, and every label-invariant observable agrees to machine precision "
+  r"(verified directly: the three runs' $(r,p,s)$ are exact cyclic permutations). "
+  r"A per-run exact symmetry check, far stronger than the statistical one.}")
+
+# 6.7 robustness: damage realisation seed
+sdf = load("sensitivity/sens_defect_seed.csv")
+sdf_fr = sorted(set(round(float(f_), 3) for f_ in sdf["frac"]))
+sdf_rows = []
+for f_ in sdf_fr:
+    sel = sdf["frac"] == f_
+    keff = sdf["k_eff"][sel]
+    ecs_ = sdf["eps_c"][sel]
+    prist = float(np.interp(keff.mean(), cb["k"], cb["eps_c_ER"]))
+    sdf_rows.append((f_, keff.mean(), keff.std(), ecs_.mean(), ecs_.std(),
+                     prist, ecs_.mean() - prist))
+w(r"\subsection*{6.7\quad Robustness: the damage realisation --- does it matter "
+  r"\emph{which} edges die?}")
+w(r"\textit{What it is.} Secs.~6.4--6.5 average over damage realisations. Here one "
+  r"pristine ER graph ($N{=}500$, $\langle k\rangle{=}20$) is damaged 6 independent "
+  r"ways at each of three edge-removal fractions, and each damaged graph gets its own "
+  r"full sweep and \epsc{} --- realisation by realisation, no averaging.")
+w(r"\hyp{Only \emph{how many} edges die matters, not \emph{which}: per Sec.~6.5, "
+  r"\epsc{} across damage seeds at fixed $f$ should scatter no more than the "
+  r"surviving effective degree $2E'/N'$ does, and every realisation should land on "
+  r"the pristine $\varepsilon_c(\langle k\rangle)$ boundary at its own effective "
+  r"degree. Scatter should grow mildly with $f$.}")
+w(r"\begin{paramlist}")
+w(rf"\item damage fraction $f\in\{{{', '.join(f'{x:g}' for x in sdf_fr)}\}}$ --- "
+  r"fraction of edges quenched (removed), as in Sec.~6.4.")
+w(r"\item damage seeds $\{1..6\}$ --- independent choices of \emph{which} edges die; "
+  r"the varied (null) parameter.")
+w(r"\item base graph --- one fixed ER realisation ($N{=}500$, "
+  r"$\langle k\rangle{=}20$, graph seed 1), so damage is the only source of "
+  r"variation.")
+w(r"\item engine --- production protocol ($T{=}0.65$, 1500 sweeps, burn-in 30\%), "
+  r"$\varepsilon$: 21 points on $[0,1]$; engine seed $=$ damage seed.")
+w(r"\item reference --- the pristine ER boundary of Sec.~4.1, interpolated at each "
+  r"realisation's effective $\langle k\rangle=2E'/N'$.")
+w(r"\end{paramlist}")
+w(r"\howobt{Per (f, damage seed): quench, measure $2E'/N'$, run the sweep (P1--P4), "
+  r"extract \epsc{} (P6); compare seed spread at fixed $f$ and deviation from the "
+  r"interpolated pristine boundary. Data: "
+  r"\texttt{sensitivity/sens\_defect\_seed.csv}.}")
+w(r"\begin{minipage}[t]{0.46\textwidth}\vspace{0pt}")
+w(r"\begin{tabular}{lccc}\toprule $f$ & eff.\ $\langle k\rangle$ & \epsc{} "
+  r"(6 seeds) & dev.\ from pristine\\\midrule")
+for f_, km, ksd, em, esd, prist, dev_ in sdf_rows:
+    w(rf"{f_:g} & {km:.2f}$\pm${ksd:.2f} & {em:.3f}$\pm${esd:.3f} & {dev_:+.3f}\\")
+w(r"\bottomrule\end{tabular}\\[4pt]")
+w(r"\small Effective degree does not even fluctuate: the damage routine removes a "
+  r"deterministic \emph{count} of edges and the giant component survives whole at "
+  r"these densities.\end{minipage}\hfill")
+w(r"\begin{minipage}[t]{0.50\textwidth}\vspace{0pt}\centering")
+w(r"\includegraphics[width=\linewidth]{sensitivity/sens_defect_seed.png}"
+  r"\end{minipage}")
+sdf_maxsd = max(r_[4] for r_ in sdf_rows)
+sdf_maxdev = max(abs(r_[6]) for r_ in sdf_rows)
+w(rf"\vrdct{{Confirmed. \epsc{{}} scatter across damage seeds is at most "
+  rf"{sdf_maxsd:.3f} (a quarter of a grid step), every seed-mean sits within "
+  rf"{sdf_maxdev:.3f} of the pristine boundary at its effective degree (inside the "
+  r"boundary's own grid resolution), and the scatter grows mildly with $f$ as "
+  r"hypothesised. Sec.~6.5's collapse holds \emph{realisation by realisation}: the "
+  r"residual influence of which edges die is negligible, so damaged networks really "
+  r"are parameterised by the single number $2E'/N'$.}")
+
+# 6.8 synthesis of the perturbation experiments
+w(r"\subsection*{6.8\quad What the perturbation experiments say together}")
 w(r"\begin{itemize}\itemsep2pt")
 w(r"\item \textbf{The two phases are vulnerable to different attacks.} The ordered "
   r"(consensus) phase is \emph{compositionally} fragile --- 5\% zealots decide which "
   r"strategy wins (6.1), and two competing factions hand it to the predator (6.3) --- "
   r"but \emph{structurally} predictable: damage moves \epsc{} only through "
   r"$\langle k\rangle$ (6.4--6.5). The cycling phase is the mirror image: almost immune "
-  r"to composition attacks (\mpsi$\le$0.18 at $z{=}0.20$) yet orderable by structural "
-  r"targeting of hubs (6.2).")
+  rf"to composition attacks (\mpsi$\le${f2(z['cycle_mpsi'][-1])} at "
+  rf"$z{{=}}{f2(z['z'][-1])}$) yet orderable by structural targeting of hubs (6.2).")
 w(r"\item \textbf{\emph{Whether} and \emph{what} have separate controls.} Whether the "
   r"population orders is governed by connectivity and placement ($\langle k\rangle$, "
   r"hubs); \emph{what} it orders on is governed by the cyclic predator logic, which no "
@@ -526,29 +1669,59 @@ w(r"\end{itemize}")
 
 # ============================================================ 7. FINDINGS SUMMARY
 w(r"\section*{7.\quad Findings summary}")
+w(r"Every number below is recomputed from the CSVs at build time (pipeline of "
+  r"Sec.~0.1); section references give the underlying data.")
+hmf_ecs = [epsc(sw["epsilon"], sw[k]) for k in ks]
+mc_er_ecs = [v for _, v in per["ER"]]
 w(r"\begin{enumerate}\itemsep1pt")
-w(r"\item \textbf{Connectivity stabilises order:} \epsc{} rises with $\langle k\rangle$ in "
-  r"HMF ($0.08\!\to\!0.70$) and in the MC phase diagram ($0\!\to\!0.72$).")
-w(r"\item \textbf{DMF $>$ HMF:} lower RMSE vs MC on both graphs, advantage $\sim$2$\times$ "
-  r"larger on heterogeneous BA. Both mean fields overestimate the ordered phase "
-  r"(MC \epsc{}$\approx$0.52 vs MF $\approx$0.64).")
-w(r"\item \textbf{Average degree, not $P(k)$:} ER and BA phase boundaries coincide "
-  r"within $\max_k|\Delta\varepsilon_c|=0.04$ over all 20 degrees.")
-w(r"\item \textbf{Genuine transition:} FSS sharpens and \epsc{} converges to $\approx$0.51; "
-  r"phase portrait shows corner consensus vs limit cycle.")
-w(r"\item \textbf{Zealots back-fire:} a Rock minority flips the free network to Paper "
-  r"(its predator), not Rock --- naive minority takeover fails in a cyclic system.")
-w(r"\item \textbf{Hub leverage $\sim$9$\times$:} hub-placed zealots amplify induced order "
-  r"vs random, but set \emph{whether}, not \emph{what}, the network orders on.")
-w(r"\item \textbf{Predator wins under competition:} equal Rock+Paper zealots drive the "
-  r"free population to Paper ($\rho\approx0.90$), not Scissors.")
-w(r"\item \textbf{Defects $\equiv$ effective $\langle k\rangle$:} edge and node damage are "
-  r"equivalent once matched by resulting mean degree (gap $\le$0.014); \epsc{} slides "
-  r"$0.64\!\to\!0.24$, and all damaged networks collapse onto the pristine boundary.")
+w(rf"\item \textbf{{Connectivity stabilises order:}} \epsc{{}} rises with $\langle k\rangle$ in "
+  rf"HMF (${f2(min(hmf_ecs))}\!\to\!{f2(max(hmf_ecs))}$, Sec.~3.1) and in the MC phase "
+  rf"diagram (${f2(min(mc_er_ecs))}\!\to\!{f2(max(mc_er_ecs))}$, Sec.~4).")
+w(rf"\item \textbf{{DMF $>$ HMF:}} lower RMSE vs MC on both graphs, advantage "
+  rf"$\sim${gain_ratio:.1f}$\times$ larger on heterogeneous BA. Both mean fields "
+  rf"overestimate the ordered phase (MC \epsc{{}}$\approx${f2(rows[0][3])} vs MF "
+  rf"$\approx${f2(rows[0][4])}, Sec.~3.2).")
+w(rf"\item \textbf{{Average degree, not $P(k)$:}} ER and BA phase boundaries coincide "
+  rf"within $\max_k|\Delta\varepsilon_c|={gap:.3f}$ over all {len(cb)} degrees (Sec.~4.1).")
+w(rf"\item \textbf{{Genuine transition:}} FSS sharpens and \epsc{{}} converges to "
+  rf"$\approx${f2(fss_ec_conv)}; phase portrait shows corner consensus vs limit cycle (Sec.~5).")
+w(rf"\item \textbf{{Zealots back-fire:}} a Rock minority flips the free network to Paper "
+  rf"(its predator), not Rock (free-Rock conversion {f2(z['order_conversion'][4])} already "
+  rf"at $z{{=}}{f2(z['z'][4])}$, Sec.~6.1) --- naive minority takeover fails in a cyclic system.")
+w(rf"\item \textbf{{Hub leverage $\sim${amp:.0f}$\times$:}} hub-placed zealots amplify "
+  rf"induced order vs random (cycling phase, $z{{=}}{f2(h['z'][-1])}$, Sec.~6.2), but set "
+  rf"\emph{{whether}}, not \emph{{what}}, the network orders on.")
+w(rf"\item \textbf{{Predator wins under competition:}} equal Rock+Paper zealots drive the "
+  rf"population to Paper ($\rho={f2(mx['order_rho_paper'][-1])}$, Sec.~6.3), not Scissors.")
+w(rf"\item \textbf{{Defects $\equiv$ effective $\langle k\rangle$:}} edge and node damage are "
+  rf"equivalent once matched by resulting mean degree (gap $\le{dev:.3f}$); \epsc{{}} slides "
+  rf"${f2(ec_edge[fr[0]])}\!\to\!{f2(ec_edge[fr[-1]])}$, and all damaged networks collapse "
+  rf"onto the pristine boundary (Secs.~6.4--6.5).")
+w(rf"\item \textbf{{Robustness, tested not assumed:}} seeds, $\varepsilon$-grid step, "
+  rf"zealot label and damage realisation are verified nuisance parameters "
+  rf"(\epsc{{}} seed std {ssd_ec.std():.4f} $\ll$ grid step, Sec.~4.3; label symmetry "
+  rf"exact to machine precision where trajectories coalesce, Sec.~6.6; damage "
+  rf"realisation scatter $\le{sdf_maxsd:.3f}$, Sec.~6.7). The regime choices hold with "
+  rf"margin: 1500 sweeps is $2\times$ past convergence (Sec.~5.2) and $T{{=}}0.65$ "
+  rf"sits in the $k$-dominated regime (Sec.~4.2).")
+w(rf"\item \textbf{{The transition is first-order-like:}} the mean field has a "
+  rf"bistable window (consensus + limit cycle coexisting, "
+  rf"$[{f3(smi_win[10][0])},{f3(smi_win[10][1])}]$ at $k{{=}}10$, Sec.~3.4) and the "
+  rf"MC pseudo-transition shifts as $1/N$ toward "
+  rf"$\varepsilon_c(\infty)\approx{f2(ssz_extrap)}$ at $\langle k\rangle{{=}}20$ "
+  rf"(Sec.~5.1) --- two independent signatures of subcriticality. Quoted \epsc{{}} "
+  rf"values are finite-$N$ estimates; all cross-network comparisons are at matched "
+  rf"$N$ and unaffected.")
 w(r"\end{enumerate}")
-w(r"\vfill\hrule\vspace{2pt}{\small Generated by \texttt{build\_report.py} from the "
-  r"regenerated CSVs and \texttt{logs/manifest.csv} (17 figures + 13 data tables in the "
-  r"repo). Full narrative in \texttt{FINDINGS.md}; run details in \texttt{RUN\_REPORT.md}; "
+n_figs = n_csvs = 0
+for root_, dirs_, files_ in os.walk(HERE):
+    dirs_[:] = [d_ for d_ in dirs_ if d_ not in (".git", ".venv", "logs", "__pycache__")]
+    n_figs += sum(f_.endswith(".png") for f_ in files_)
+    n_csvs += sum(f_.endswith(".csv") for f_ in files_)
+w(rf"\vfill\hrule\vspace{{2pt}}{{\small Generated by \texttt{{build\_report.py}} from the "
+  rf"regenerated CSVs and \texttt{{logs/manifest.csv}} ({n_figs} figures + {n_csvs} data "
+  r"tables in the repo). Full narrative in \texttt{FINDINGS.md} (root and per folder, "
+  r"incl.\ \texttt{sensitivity/}); run details in \texttt{RUN\_REPORT.md}; "
   r"presentation guide in \texttt{PRESENTING.md}.}")
 w(r"\end{document}")
 

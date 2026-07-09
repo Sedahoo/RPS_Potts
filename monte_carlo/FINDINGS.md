@@ -26,3 +26,11 @@ C++ engine against the pure-Python reference.
 - The C++ engine matches the pure-Python MC within stochastic noise (different
   RNGs; ordered/disordered verdict always agrees) and runs **~30-40x faster**.
   This is what makes the parameter sweeps in `phase_diagram/` feasible.
+
+## Overlay grid across T, <k>, N + BA (`compare_grid.py`)
+The MC-vs-HMF overlay repeated with the validated C++ engine over T/k/N plus
+a BA row. MC–HMF eps_c gap shrinks with k (0.16 → 0.08 from k=6 to 20), does
+not grow with T (both boundaries slide together at k=10), and widens slowly
+with N (the MC crossing walks left ~1/N under a frozen HMF). BA at matched
+<k> reproduces ER to line width — the mean-field error is set by <k> and N,
+not by P(k).

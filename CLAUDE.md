@@ -26,18 +26,34 @@ at matched `<k>`).
   Synthesis analyses: `phase_diagram/critical_boundary.py` (eps_c(<k>) ER vs BA
   vs HMF), `defects/collapse.py` (damaged networks land on the pristine boundary).
 - `zealots/`, `defects/` — perturbation experiments.
+- `sensitivity/` — hypothesis-first robustness audits of every section's fixed
+  parameters (T×k, seeds, N, sweeps, eps-grid, MF init, zealot label, damage
+  realisation). Protocol: hypotheses pre-registered in
+  `sensitivity/HYPOTHESES.md` BEFORE running (method amendments logged there),
+  verdicts in `sensitivity/FINDINGS.md`. Key discoveries: the transition is
+  first-order-like (HMF bistable window + 1/N shift of MC eps_c), and HMF
+  under-predicts eps_c at high k.
 - `WALKTHROUGH.md` — build-order learning path. `FINDINGS.md` (root + per folder) — results narrative.
 
 ## Reproduction & deliverables
 - `./run_all.sh` — the one command: rebuilds the engine, runs the validation
-  test, then all 18 steps; per-step logs + `logs/manifest.csv`. Deterministic
+  test, then every simulation step incl. the sensitivity suite (step count in
+  `logs/manifest.csv`); per-step logs + `logs/manifest.csv`. Deterministic
   seeds: every figure/CSV must regenerate **byte-for-byte identical** (check
   with `git status` after a run — only `logs/` should change).
 - `build_report.py` — generates `RESULTS_REPORT.pdf` (pdflatex). **Every number
   in the report is computed from the CSVs / logs at build time — never
   hardcode results, step counts, dates, or speedups in the LaTeX.** Each result
-  section follows the pattern: *What it is* → *Parameters* (gray block) →
-  data table + figure → *Conclusion*. Rebuild the report after any data change.
+  section follows the pattern: *What it is* → *Parameters — each defined*
+  (gray itemized list: every parameter gets value **and** definition) →
+  *How the numbers are obtained* (blue block, references pipeline steps P1–P6
+  of report Sec. 0.1) → data table + figure → *Conclusion*. Each section
+  additionally ends with *Robustness* subsections (purple *Hypothesis — stated
+  before running* block → parameters → data → green *Verdict vs hypothesis*
+  block) fed by the `sensitivity/*.csv` tables. All eps_c values use the
+  interpolated m_psi=0.5 crossing (same estimator as
+  `phase_diagram/critical_boundary.py`, exposed as
+  `common.observables.eps_crossing`). Rebuild the report after any data change.
 - `RUN_REPORT.md` — written run summary; `PRESENTING.md` — meeting script for
   the professor (what to show, what to say, likely Q&A, the HPC ask).
 

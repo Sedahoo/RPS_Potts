@@ -21,3 +21,24 @@ def order_parameter(fracs, burn_in_frac=0.5):
     psi = psi_series(fracs)
     start = int(len(psi) * burn_in_frac)
     return float(np.abs(np.mean(psi[start:])))
+
+
+def eps_crossing(eps, m, thr=0.5):
+    """Interpolated eps where m(eps) first crosses below thr (order -> cycling).
+
+    The project-wide eps_c estimator (same as phase_diagram/critical_boundary.py):
+    sort by eps, find the first grid point with m < thr, linearly interpolate
+    between the bracketing points.
+    """
+    eps = np.asarray(eps, dtype=float)
+    m = np.asarray(m, dtype=float)
+    o = np.argsort(eps)
+    eps, m = eps[o], m[o]
+    below = np.where(m < thr)[0]
+    if len(below) == 0:
+        return float(eps[-1])
+    i = below[0]
+    if i == 0:
+        return float(eps[0])
+    e0, e1, m0, m1 = eps[i - 1], eps[i], m[i - 1], m[i]
+    return float(e0 + (thr - m0) * (e1 - e0) / (m1 - m0))

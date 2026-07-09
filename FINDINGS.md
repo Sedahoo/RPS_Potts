@@ -67,3 +67,28 @@ does higher connectivity `<k>` protect order against `eps`?
    stabilises order" run in reverse. The collapse test (`collapse.py`) makes it
    exact: all damaged-network (eps_c, <k>) points land on the pristine-ER
    boundary curve; max edge-node gap 0.014.
+
+### Sensitivity suite — `sensitivity/FINDINGS.md`
+Hypothesis-first robustness audits of every fixed parameter (pre-registered in
+`sensitivity/HYPOTHESES.md`, embedded per section in RESULTS_REPORT.pdf).
+5. **Nuisance parameters verified nuisance** (tested, not assumed): graph vs MC
+   seed (eps_c std 0.0025 ≪ grid step, indistinguishable contributions);
+   eps-grid step (interpolated estimator off ≤ 0.005 at step 0.05, naive
+   convention biased ~ a full step); zealot strategy label (exact R→P→S
+   symmetry — permutation test consistent with pure false positives, and
+   relabeled runs literally *coalesce* to machine-precision-identical
+   trajectories); damage realisation (which edges die shifts eps_c ≤ 0.012 —
+   only `2E'/N'` matters, realisation by realisation).
+6. **Regime choices hold with margin**: 1500 sweeps is 2x past convergence
+   (short runs *under*estimate eps_c — the ordered-side bias wins, not the
+   predicted cycling-side one); T=0.65 sits deep in the k-dominated regime
+   (eps_c drop over T∈[0.3,1.3]: 0.20 at k=8 → 0.03 at k=40), which is what
+   licenses "stability is a function of `<k>` alone".
+7. **New physics from the failures — the transition is first-order-like**: the
+   HMF has a genuine bistable window (consensus + limit cycle coexisting;
+   [0.63,0.71] at k=10, [0.71,0.81] at k=20 — the init picks the attractor),
+   and the MC pseudo-transition shifts as 1/N toward eps_c(∞)≈0.58 at k=20 —
+   the standard first-order finite-size scaling, found independently in mean
+   field and MC. Also: the HMF overestimate of eps_c *reverses* at high k
+   (saturated rates plateau near 0.7 while the MC boundary keeps rising), so
+   "mean field overestimates order" is a low-k statement.

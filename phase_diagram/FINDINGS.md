@@ -31,3 +31,10 @@ strength `eps`), from the full stochastic MC. Reproduces the thesis's
   **max |eps_c(ER) - eps_c(BA)| = 0.040** across all 20 degrees (they coincide),
   and the HMF prediction sits **above** the MC boundary at every k (mean field
   overestimates the ordered phase). Data: `critical_boundary.csv`.
+
+## Extra diagrams (`extra_diagrams.py`)
+Four more (⟨k⟩×ε) diagrams around the production point (T=0.30/1.00 at N=800,
+N=300/2000 at T=0.65). The two-phase structure is universal; only the boundary
+moves: up when cold (+0.024 mean), down when hot (−0.028), with the T-shift
+concentrated at small <k> (T/k effective noise); size shifts smaller and
+signed as the 1/N first-order drift (+0.040 at N=300, −0.017 at N=2000).

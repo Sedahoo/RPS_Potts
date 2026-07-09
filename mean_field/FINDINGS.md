@@ -25,3 +25,11 @@ Analytical models: HMF (homogeneous, one (r,p,s)) and DMF (degree-based, one
 - **DMF beats HMF on both graphs, by more on BA** (heterogeneous P(k)):
   RMSE(HMF,MC)/RMSE(DMF,MC) = 0.3376/0.3340 on ER, 0.3357/0.3280 on BA.
   The degree-resolved model earns its keep where the degree spread is wide.
+
+## Across T, <k>, N (`compare_grid.py`)
+The MC/HMF/DMF accuracy test repeated over T∈{0.4,0.65,1.0}, k∈{6,10,20},
+N∈{400,800,1600} (one axis at a time, ER+BA). DMF ≤ HMF in 12/14 cells (both
+exceptions on ER, where P(k) is narrow and seed noise decides). RMSE *falls*
+with T at k=10 (HMF is still T-responsive there — the T-blind picture only
+sets in at high k), falls with k as predicted, and *grows* with N because the
+MC eps_c slides down as 1/N (first-order drift) under N-blind mean fields.

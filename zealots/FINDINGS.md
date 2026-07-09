@@ -37,3 +37,21 @@ Equal fractions `z` of **Rock** and **Paper** zealots (total 2z), ER.
   Paper is reinforced twice — by its own zealots and by Rock-zealots provoking
   their predator. Intermediate z is a frustrated, multistable regime.
 - **Cycling phase:** robust; balanced zealots barely perturb it (`m_psi` ~ 0.08).
+
+## Across T, <k>, N (`experiment_grid.py`)
+Single Rock-faction experiment over T∈{0.4,0.65,1.0}, k∈{6,10,20},
+N∈{400,800,1600}: the backfire is generic — small-z zealots elect Paper in
+every cell (rho_paper ≈ 0.85–0.95 at z=0.05), never Rock. Hotter systems
+re-pin Rock at large z less readily; the cycling phase is immune everywhere;
+N is a null axis at small z (curves coincide within seed noise) and merely
+bimodal-noisy at large z.
+
+## Time signals (`timeseries.py`)
+Per-sweep (r,p,s) via the engine's --timeseries flag (log time axis —
+consensus forms in ~10 sweeps on a dense random graph). Clean ordering:
+whoever leads the random start snowballs (majority by sweep ~6). Backfire:
+zealots make Rock the initial leader (0.35), yet Paper is a majority by sweep
+4 and Rock is eaten to its zealot floor. Large faction (z=0.2): Rock first
+GROWS to 0.61 feeding on Scissors, then Paper catches up (sweep 8) and pins
+it at the floor — the cyclic mechanism in real time. Cycling: no winner ever;
+zealots change nothing.

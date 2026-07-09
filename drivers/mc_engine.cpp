@@ -12,6 +12,11 @@
 // separating genuine influence from the zealots' own trivial contribution.
 //
 // Output line:  "m_psi avg_r avg_p avg_s conversion_zs"
+// Optional:  --timeseries <path> additionally dumps the per-sweep global
+// fractions "t r p s" for EVERY sweep (burn-in included), so the full story
+// of a run -- who led at the start, when the lead flipped, where it ended --
+// can be plotted. Recording consumes no RNG draws, so enabling it does not
+// change the trajectory or the summary line.
 // Build:  make
 
 #include <iostream>
@@ -45,7 +50,7 @@ Graph read_graph(const std::string& path) {
 }
 
 int main(int argc, char* argv[]) {
-    std::string graph_path, output_path, zealot_target = "random";
+    std::string graph_path, output_path, timeseries_path, zealot_target = "random";
     double epsilon = 0.5, temp = 0.65, zealot_frac = 0.0, zealot_frac_b = 0.0;
     int sweeps = 1500, burn_in = 450, zealot_strategy = 0, zealot_strategy_b = 1;
     unsigned long seed = 1;
@@ -63,6 +68,7 @@ int main(int argc, char* argv[]) {
         else if (a=="--zealot-frac-b"     && i+1<argc) zealot_frac_b     = std::stod(argv[++i]);  // 2nd faction
         else if (a=="--zealot-strategy-b" && i+1<argc) zealot_strategy_b = std::stoi(argv[++i]);
         else if (a=="--output"  && i+1<argc) output_path = argv[++i];
+        else if (a=="--timeseries" && i+1<argc) timeseries_path = argv[++i];
     }
     if (graph_path.empty()) { std::cerr << "need --graph\n"; return 1; }
     Graph g = read_graph(graph_path);
@@ -110,6 +116,15 @@ int main(int argc, char* argv[]) {
     const double sin120 = std::sqrt(3.0) / 2.0;
     double sr=0,sp=0,ss=0,spr=0,spi=0,conv=0;
     long meas = 0;
+    std::ofstream ts;
+    if (!timeseries_path.empty()) {
+        ts.open(timeseries_path);
+        ts << "t,r,p,s\n";
+        int c0[3] = {0,0,0};                     // the t=0 (initial) composition
+        for (int i = 0; i < g.n; ++i) c0[state[i]]++;
+        ts << 0 << "," << (double)c0[0]/g.n << "," << (double)c0[1]/g.n
+           << "," << (double)c0[2]/g.n << "\n";
+    }
 
     for (int t = 0; t < sweeps; ++t) {
         for (int i = 0; i < g.n; ++i) {
@@ -123,6 +138,12 @@ int main(int argc, char* argv[]) {
             for (int m : nb) dU += P[prop][state[m]] - P[cur][state[m]];
             if (rng.sample(0.0, 1.0) * (1.0 + std::exp(-dU/temp)) < 1.0)
                 state[n] = prop;
+        }
+        if (ts.is_open()) {                       // record every sweep (no RNG use)
+            int ct[3] = {0,0,0};
+            for (int i = 0; i < g.n; ++i) ct[state[i]]++;
+            ts << t + 1 << "," << (double)ct[0]/g.n << "," << (double)ct[1]/g.n
+               << "," << (double)ct[2]/g.n << "\n";
         }
         if (t >= burn_in) {
             int c[3] = {0,0,0}; long free_zs = 0;
