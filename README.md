@@ -1,10 +1,12 @@
-# RPS-Potts on Networks — Recreation
+# RPS-Potts on Networks
 
-A from-scratch rebuild of "Project B" (hybrid Potts + Rock-Paper-Scissors on
-complex networks) for learning, built in teaching order: understand the physics
-in slow/clear Python, then make it fast, then scale, then iterate.
+Cyclic dominance of a Potts (q=3) + Rock-Paper-Scissors model on complex
+networks: MC / HMF / DMF cross-validated, phase diagram, and perturbation
+experiments (zealots, hub targeting, competing factions, defects).
 
-Original repo: `../RPS_Potts_Network` (thesis Chapter 4, U. Shekhar / C. Hens).
+See `RESEARCH_PAPER.pdf` for the full write-up (model, derivations, results),
+or `RESULTS_REPORT.pdf` for the complete per-experiment parameter listing and
+reproducibility manifest.
 
 ## The model in one paragraph
 
@@ -67,8 +69,8 @@ bash phase_diagram/run.sh ER          # or BA
 
 ## Notes / gotchas
 
-- In the ORIGINAL repo the C++ filenames are swapped: `hmf_simulation.cpp` is
-  really DMF, `sde_simulation.cpp` is really HMF. This recreation names things
+- In the original thesis repo the C++ filenames are swapped: `hmf_simulation.cpp`
+  is really DMF, `sde_simulation.cpp` is really HMF. This repo names things
   correctly.
 - `phase_diagram/run.sh` uses GNU parallel if present, else `xargs -P`.
 - The venv `python` is a symlink: use `$(cd .venv/bin && pwd)/python`, never
