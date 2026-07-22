@@ -255,6 +255,7 @@ Mean-Field Theory, Monte Carlo Validation, and Perturbation Analysis}
 \date{RUNDATE}
 \begin{document}
 \maketitle
+\begin{center}\small Code and data: \url{https://github.com/Sedahoo/RPS_Potts}\end{center}
 \begin{abstract}
 \noindent
 We study a $q{=}3$ Potts model in which the pairwise interaction is deformed
