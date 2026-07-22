@@ -14,7 +14,7 @@ TEMPERATURE=0.65
 SWEEPS=800
 BURN_IN=240
 EPS_MIN=0.0; EPS_MAX=1.0; EPS_NUM=26
-DEG_MIN=2;  DEG_MAX=40;  DEG_STEP=2
+DEG_MIN=2;  DEG_MAX=80;  DEG_STEP=2
 NUM_JOBS="$(nproc)"
 
 PYTHON="$(cd ../.venv/bin && pwd)/python"   # project venv (has networkx); abs dir, keeps the venv symlink intact

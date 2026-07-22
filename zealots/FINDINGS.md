@@ -55,3 +55,20 @@ zealots make Rock the initial leader (0.35), yet Paper is a majority by sweep
 GROWS to 0.61 feeding on Scissors, then Paper catches up (sweep 8) and pins
 it at the floor — the cyclic mechanism in real time. Cycling: no winner ever;
 zealots change nothing.
+
+## Time signals for the whole z-sweep (`phase7_timeseries.py`)
+Same idea, but every z on the Phase-7 grid (17 points, one ER seed) instead of
+4 hand-picked scenarios: per-sweep conversion(t) and the instantaneous
+|psi(t)| (not time-averaged), colour-graded by z. Ordering phase: every
+trajectory is decided fast (median sweep 6 to move >0.15 off the 1/3
+baseline) then flat for the rest of the run; per-realisation the outcome is
+**binary** (conversion -> 0 or -> 1), not the smooth partial value the
+12-seed average shows — this single seed disagrees with the `experiment.py`
+ensemble average by RMSE 0.35 over the z-grid (e.g. z=0.20 crashes to ~0 here
+but averages to 0.34 over 12 seeds). That's not a discrepancy to fix: it's
+the large-z recovery caught in the act of being a collective-fluctuation /
+basin-selection effect (report Sec. 6.1's zealot-field mathematics,
+basin escape ~ e^(-cN)) — each realisation lands in one basin, only the
+ensemble average looks smooth. Cycling phase: no fast decision anywhere;
+conversion and |psi(t)| stay near their baselines and are visibly
+z-independent throughout.

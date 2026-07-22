@@ -31,13 +31,20 @@ does higher connectivity `<k>` protect order against `eps`?
 - C++ engine validated against pure Python, **~30-40x faster** (enables the sweeps).
 
 ### Phase diagram — `phase_diagram/FINDINGS.md`
-- The `(<k>, eps)` heatmap: ordered region in the upper-left, boundary **curving
-  up-right** (connectivity protects order), saturating near eps ~ 0.65; sparse
-  rows (`<k>`<=4) cannot order at all.
+- The `(<k>, eps)` heatmap (grid extended to `<k>`=80): ordered region in the
+  upper-left, boundary **curving up-right** (connectivity protects order),
+  creeping slowly from ~0.66 (k=24) to ~0.74 (k=80); sparse rows (`<k>`<=4)
+  cannot order at all.
 - **ER vs BA nearly identical** — for the MC, average degree matters, not the
   degree-distribution shape. Quantified by `critical_boundary.py`:
-  max |eps_c(ER) − eps_c(BA)| = 0.040 over all 20 degrees, with the HMF
-  prediction sitting above the MC boundary at every k.
+  max |eps_c(ER) − eps_c(BA)| = 0.040 over all 40 degrees. The HMF prediction,
+  recomputed at every MC degree on the identical eps-grid/estimator, sits above
+  the MC boundary by +0.198 at k=4 (standard-init edge) but dips below it past
+  k≈40 — not a mean-field failure: because the transition is subcritical, the
+  HMF is really a bistable *window* (standard-init and ordered-init edges), and
+  the window widens with k until the MC boundary runs inside it (21/40 degrees,
+  k≥40; window [0.70, 0.94] at k=80) — a single-init eps_c stops being a unique
+  prediction there.
 
 ### Dynamics — `dynamics/FINDINGS.md`
 - **Ternary**: low eps spirals to a corner (consensus); high eps orbits the centre.
@@ -92,3 +99,31 @@ Hypothesis-first robustness audits of every fixed parameter (pre-registered in
    field and MC. Also: the HMF overestimate of eps_c *reverses* at high k
    (saturated rates plateau near 0.7 while the MC boundary keeps rising), so
    "mean field overestimates order" is a low-k statement.
+
+### The analytic skeleton — report Sec. 0.2 + per-section Mathematics blocks
+8. Every report section now carries the governing equations and a derived
+   model of its behaviour, each closed form re-checked numerically at report
+   build time (the checks live in `build_report.py`). Highlights:
+   - **Linearisation**: the HMF Jacobian at the symmetric point reduces on the
+     simplex to `1/4·I + k/(4T)·(I + eps·S)`, eigenvalues
+     `1/4 + k/4T ± i·sqrt(3)·eps·k/(4T)` — cyclic dominance enters as *pure
+     rotation* (verified to 1e-8 against finite differences). The mixed state
+     is always unstable; the transition is attractor competition, hence
+     first-order-like.
+   - **Exact k/T invariance**: the HMF map depends on (k,T) only through k/T,
+     so eps_c^HMF = F(k/T) exactly (equal to the last digit at matched (k,T)
+     pairs); the quenched MC *breaks* it (0.625 vs 0.698 at k/T=30.8) —
+     degree fluctuations sigma_k/<k> = 1/sqrt(<k>) can't be rescaled away.
+   - **Bistable window edges located**: Newton continuation puts the true end
+     of the ordered branch at eps=0.716 (k=10) / 0.834 (k=20), just above the
+     init-measured window tops 0.706/0.806 (basin exit precedes branch death).
+   - **Zealot field**: h = kz·(1, eps, −eps) — zealots feed their predator
+     and starve its only threat; both free consensuses stay locally stable, so
+     zealot outcomes are basin selection (large-z flips onto Rock are ~e^(−cN)
+     basin escapes — why the flip fraction dies with N). Two factions:
+     h = kz·(1−eps, 1+eps, 0) — "Scissors profits" fails *algebraically*.
+   - **Hub leverage**: z_eff = degree-weighted zealot fraction = sqrt(z) on
+     ideal BA (measured stub share 0.320 vs sqrt(0.1)=0.316).
+   - **Thinning theorem**: edge or node removal maps ER(N,p) to ER with
+     <k>_eff = (1−f)<k> — the 6.5 collapse is a closure property of ER, and
+     the edge/node coincidence is exact in law, not an empirical accident.

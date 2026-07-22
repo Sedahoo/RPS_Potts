@@ -47,7 +47,11 @@ at matched `<k>`).
   section follows the pattern: *What it is* → *Parameters — each defined*
   (gray itemized list: every parameter gets value **and** definition) →
   *How the numbers are obtained* (blue block, references pipeline steps P1–P6
-  of report Sec. 0.1) → data table + figure → *Conclusion*. Each section
+  of report Sec. 0.1) → *The mathematics* (rust block: specialises the
+  governing equations of report Sec. 0.2, derives a model of the behaviour,
+  states how derived; every numeric prediction is computed at build time —
+  the Jacobian/continuation/HMF-map checks live in build_report.py itself) →
+  data table + figure → *Conclusion*. Each section
   additionally ends with *Robustness* subsections (purple *Hypothesis — stated
   before running* block → parameters → data → green *Verdict vs hypothesis*
   block) fed by the `sensitivity/*.csv` tables. All eps_c values use the

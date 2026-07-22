@@ -79,6 +79,11 @@ run "zealots_experiment_hubs"   "zealots"        "$PY" experiment_hubs.py
 run "zealots_experiment_mixed"  "zealots"        "$PY" experiment_mixed.py
 run "zealots_experiment_grid"   "zealots"        "$PY" experiment_grid.py
 run "zealots_timeseries"        "zealots"        "$PY" timeseries.py
+run "zealots_phase7_timeseries" "zealots"        "$PY" phase7_timeseries.py
+
+# --- 6b. conceptual diagrams for the standalone paper (order-parameter geometry,
+#     node-level network evolution) ---
+run "figures_concept_diagrams"  "figures"        "$PY" concept_diagrams.py
 
 # --- 7. defects (edge/node quenched disorder) + collapse test ---
 run "defects_experiment"        "defects"        "$PY" experiment_defects.py
