@@ -1,7 +1,7 @@
 # Findings
 
-Results from the whole project, in two parts: **A. Recreation** (reproducing the
-thesis's Project B) and **B. Iteration** (novel extensions). Each section folder
+Results from the whole project, in two parts: **A. Core validation** (MC / mean-field
+/ phase diagram) and **B. Extensions** (novel perturbation experiments). Each section folder
 has its own `FINDINGS.md` with the detailed version; this file is the summary.
 
 **Model recap.** Nodes play Rock/Paper/Scissors; payoff `P = I + eps*skew`. `eps`
@@ -11,7 +11,7 @@ does higher connectivity `<k>` protect order against `eps`?
 
 ---
 
-## A. Recreation findings (reproducing the thesis)
+## A. Core validation findings
 
 ### Mean field — `mean_field/FINDINGS.md`
 - One control knob: eps=0.2 orders (`m_psi=1.000`), eps=0.9 cycles (`m_psi=0.001`).
@@ -55,7 +55,7 @@ does higher connectivity `<k>` protect order against `eps`?
 
 ---
 
-## B. Iteration findings (novel — not in the thesis)
+## B. Extension findings (novel perturbation experiments)
 
 ### Zealots — `zealots/FINDINGS.md`
 1. **Zealots provoke their own predator**: a few Rock-zealots flip the free

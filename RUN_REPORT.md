@@ -41,7 +41,7 @@ Reproduce everything in ~2 min:
 
 ## 2. Results by section (all numbers from this run's regenerated CSVs)
 
-### Recreation (reproduces thesis "Project B")
+### Core validation (Monte Carlo / mean-field / phase diagram)
 
 **Mean field — `mean_field/`**
 - HMF single trajectory + ε-sweep across ⟨k⟩ ∈ {2,5,10,50,200}: connectivity stabilises order (transition moves to higher ε as ⟨k⟩ grows). → `hmf_sweep.csv`
@@ -63,7 +63,7 @@ Reproduce everything in ~2 min:
 **Dynamics — `dynamics/`**
 - Ternary (corner attractor vs limit cycle), fixed-point stability (consensus vs limit cycle), and finite-size scaling N ∈ {200, 500, 1000, 2000}: the transition sharpens and converges toward the true critical point as N grows. → `fss.csv`
 
-### Iteration (new results beyond the thesis)
+### Extensions (novel perturbation experiments)
 
 **Zealots — `zealots/`**
 - **Single Rock-faction (ordering, ε=0.3):** a few Rock-zealots *provoke their own predator* — free-node conversion-to-Rock collapses from 0.58 → **0.00 by z≈0.05** (the free network flips to **Paper**, the strategy that beats Rock). Counterintuitive: naive minority takeover fails in a cyclic system.

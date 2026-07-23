@@ -12,6 +12,10 @@ _*.edgelist
 jobs_*.txt
 temp_*/
 
+# personal reference / demo material, not for the public repo
+PRESENTING.md
+temp.txt
+
 # LaTeX report intermediates
 report.tex
 report.aux
